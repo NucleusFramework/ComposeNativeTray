@@ -52,6 +52,9 @@ kotlin {
             implementation(libs.nucleus.core.runtime)
             implementation(libs.nucleus.darkmode.detector)
         }
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+        }
     }
 }
 
