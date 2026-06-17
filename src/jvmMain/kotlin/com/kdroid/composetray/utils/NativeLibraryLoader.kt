@@ -59,9 +59,13 @@ internal object NativeLibraryLoader {
         cacheDir.mkdirs()
         val cachedFile = File(cacheDir, fileName)
 
-        // Validate cache: re-extract if size differs or file is missing
-        val resourceSize = resourceUrl.openConnection().contentLengthLong
-        if (cachedFile.exists() && cachedFile.length() == resourceSize) {
+        // Validate the cache by content hash, not by size. Two builds of the same
+        // source can produce libraries of identical byte size but different code
+        // (e.g. the AVX vs SSE2 build of WinTray.dll — both 23552 bytes — see #401).
+        // A size-only check would keep serving a stale cached library after the user
+        // upgrades, so the original crash survives the fix. Compare hashes instead.
+        val resourceHash = resourceUrl.openStream().use { it.sha256() }
+        if (isCacheUpToDate(cachedFile, resourceHash)) {
             return cachedFile
         }
 
@@ -79,6 +83,16 @@ internal object NativeLibraryLoader {
 
         return cachedFile
     }
+
+    /**
+     * A cached library is valid only if it exists and its content hash matches the
+     * resource currently on the classpath. Content-based (not size-based) so that an
+     * upgraded library replaces a same-sized stale one (see #401).
+     */
+    internal fun isCacheUpToDate(
+        cachedFile: File,
+        expectedSha256: String,
+    ): Boolean = cachedFile.exists() && cachedFile.sha256() == expectedSha256
 
     private fun resolveCacheDir(platform: String): File {
         val os = System.getProperty("os.name")?.lowercase() ?: ""

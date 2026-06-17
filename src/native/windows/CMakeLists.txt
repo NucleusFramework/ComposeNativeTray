@@ -17,6 +17,12 @@ endif()
 if(CMAKE_GENERATOR_PLATFORM STREQUAL "x64" OR CMAKE_GENERATOR_PLATFORM STREQUAL "")
     set(TARGET_ARCH "x64")
     set(OUTPUT_DIR "${BASE_OUTPUT_DIR}/win32-x86-64")
+    # Do NOT add /arch:AVX, /arch:AVX2 or higher here. The default x64 baseline is
+    # SSE2, which every x86-64 CPU supports. Enabling AVX makes MSVC emit
+    # VEX-encoded instructions (e.g. VPXOR) that raise EXCEPTION_ILLEGAL_INSTRUCTION
+    # on pre-2011 CPUs without AVX (Nehalem Xeon, Core 2 Duo, ...). See issue #401.
+    # The CI build disassembles the produced DLL and fails if any AVX instruction
+    # is found, so a reintroduced /arch flag will be caught.
 elseif(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
     set(TARGET_ARCH "ARM64")
     set(OUTPUT_DIR "${BASE_OUTPUT_DIR}/win32-arm64")

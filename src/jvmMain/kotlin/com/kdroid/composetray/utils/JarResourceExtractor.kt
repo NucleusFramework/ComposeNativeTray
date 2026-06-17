@@ -88,10 +88,10 @@ internal fun extractToTempIfDifferent(jarPath: String): File? {
 }
 
 // Extension to calculate SHA-256 of a file
-private fun File.sha256(): String = inputStream().use { it.sha256() }
+internal fun File.sha256(): String = inputStream().use { it.sha256() }
 
 // Extension to calculate SHA-256 of an InputStream
-private fun InputStream.sha256(): String {
+internal fun InputStream.sha256(): String {
     val digest = MessageDigest.getInstance("SHA-256")
     val buffer = ByteArray(1024)
     var bytesRead: Int

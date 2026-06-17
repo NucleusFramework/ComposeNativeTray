@@ -111,6 +111,31 @@ jobs:
           ls -la build/nativeLibs/win32-x86-64/
           ls -la build/nativeLibs/win32-arm64/
 
+      # Regression guard for issue #401: WinTray.dll must stay AVX-free so it does
+      # not crash with EXCEPTION_ILLEGAL_INSTRUCTION on pre-2011 CPUs (no AVX).
+      # AVX/AVX2 are VEX-encoded; their mnemonics start with 'v' (vpxor, vmovdqu,
+      # vzeroupper, vxorps, ...). No legacy x86-64 instruction MSVC emits for C code
+      # starts with 'v', so any such mnemonic in .text means AVX leaked in.
+      - name: Verify x64 WinTray.dll is AVX-free (issue #401)
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vsPath) { throw "Visual Studio installation not found" }
+          $dumpbin = Get-ChildItem -Path "$vsPath\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe |
+                     Where-Object { $_.FullName -match '\\Hostx64\\x64\\' } | Select-Object -First 1
+          if (-not $dumpbin) { throw "dumpbin.exe not found" }
+          Write-Host "Using $($dumpbin.FullName)"
+          $disasm = & $dumpbin.FullName /DISASM:NOBYTES "build/nativeLibs/win32-x86-64/WinTray.dll"
+          $avx = $disasm | Select-String -Pattern '^\s+[0-9A-Fa-f]+:\s+v[a-z]' |
+                 Where-Object { $_.Line -notmatch '\bv(err|erw)\b' }
+          if ($avx) {
+            Write-Host "AVX instructions found in WinTray.dll (x64):"
+            $avx | Select-Object -First 20 | ForEach-Object { Write-Host $_.Line.Trim() }
+            throw "WinTray.dll (x64) contains AVX instructions; it would crash on CPUs without AVX (issue #401). Do not add /arch:AVX* to CMakeLists."
+          }
+          Write-Host "OK: no AVX instructions found in x64 WinTray.dll"
+
       - name: Upload Windows x64 library
         uses: actions/upload-artifact@v4
         with:
