@@ -123,6 +123,29 @@ static desktop_env detect_desktop(void) {
 }
 
 /* ========================================================================== */
+/*  Deferred user callbacks                                                   */
+/* ========================================================================== */
+
+/* User callbacks (click / menu) are invoked from D-Bus method handlers that
+ * run inside sd_bus_process() under bus_lock. Invoking them there would hold
+ * bus_lock across an upcall into JVM/Kotlin code, which can re-enter the
+ * native mutators and deadlock against the caller's own lock. Instead the
+ * handlers enqueue the invocation here and the event loop drains the queue
+ * after releasing bus_lock. */
+typedef enum {
+    PCB_CLICK,
+    PCB_RCLICK,
+    PCB_MENU_ITEM,
+    PCB_MENU_OPENED,
+} pending_cb_type;
+
+typedef struct {
+    pending_cb_type type;
+    int32_t  x, y;
+    uint32_t id;
+} pending_cb;
+
+/* ========================================================================== */
 /*  Tray state                                                                */
 /* ========================================================================== */
 
@@ -135,6 +158,17 @@ struct sni_tray {
     char        *bus_name;     /* org.kde.StatusNotifierItem-{PID}-1 */
     int          running;
     int          quit_pipe[2]; /* write to [1] to wake the event loop */
+
+    /* Serializes every sd_bus_* access and the tray state it reads/writes.
+     * sd-bus objects are NOT thread-safe: the event loop thread (sd_bus_process)
+     * and the foreign threads driving the mutators below must never touch the
+     * bus concurrently. See issue #405. */
+    pthread_mutex_t bus_lock;
+
+    /* Deferred user callbacks, flushed by the event loop outside bus_lock. */
+    pending_cb  *pending;
+    int          pending_count;
+    int          pending_capacity;
 
     /* SNI properties */
     char        *title;
@@ -185,6 +219,50 @@ static int64_t now_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+/* ========================================================================== */
+/*  Bus lock helpers                                                          */
+/* ========================================================================== */
+
+static inline void bus_lock(sni_tray *tray)   { pthread_mutex_lock(&tray->bus_lock); }
+static inline void bus_unlock(sni_tray *tray) { pthread_mutex_unlock(&tray->bus_lock); }
+
+/* Enqueue a user callback to be fired by the event loop after bus_lock is
+ * released. Called only from D-Bus handlers, i.e. with bus_lock already held
+ * on the event loop thread, so no additional locking is required. */
+static void enqueue_callback(sni_tray *tray, pending_cb cb) {
+    if (tray->pending_count >= tray->pending_capacity) {
+        int new_cap = tray->pending_capacity ? tray->pending_capacity * 2 : 16;
+        pending_cb *p = realloc(tray->pending, (size_t)new_cap * sizeof(pending_cb));
+        if (!p) return; /* drop on OOM rather than risk an unbounded grow */
+        tray->pending = p;
+        tray->pending_capacity = new_cap;
+    }
+    tray->pending[tray->pending_count++] = cb;
+}
+
+/* Drain and invoke queued callbacks. Must run on the event loop thread with
+ * bus_lock NOT held, so user code is free to call back into the mutators. */
+static void flush_callbacks(sni_tray *tray) {
+    for (int i = 0; i < tray->pending_count; i++) {
+        pending_cb *c = &tray->pending[i];
+        switch (c->type) {
+            case PCB_CLICK:
+                if (tray->on_click)  tray->on_click(c->x, c->y, tray->on_click_data);
+                break;
+            case PCB_RCLICK:
+                if (tray->on_rclick) tray->on_rclick(c->x, c->y, tray->on_rclick_data);
+                break;
+            case PCB_MENU_ITEM:
+                if (tray->on_menu_item) tray->on_menu_item(c->id, tray->on_menu_item_data);
+                break;
+            case PCB_MENU_OPENED:
+                if (tray->on_menu_opened) tray->on_menu_opened(tray->on_menu_opened_data);
+                break;
+        }
+    }
+    tray->pending_count = 0;
 }
 
 /* ========================================================================== */
@@ -462,8 +540,7 @@ static int sni_activate(sd_bus_message *msg, void *userdata, sd_bus_error *error
         tray->last_activate_ms = now;
     }
 
-    if (tray->on_click)
-        tray->on_click(x, y, tray->on_click_data);
+    enqueue_callback(tray, (pending_cb){.type = PCB_CLICK, .x = x, .y = y});
 
     return sd_bus_reply_method_return(msg, "");
 }
@@ -479,8 +556,7 @@ static int sni_context_menu(sd_bus_message *msg, void *userdata, sd_bus_error *e
     tray->last_click_y = y;
     pthread_mutex_unlock(&tray->click_lock);
 
-    if (tray->on_rclick)
-        tray->on_rclick(x, y, tray->on_rclick_data);
+    enqueue_callback(tray, (pending_cb){.type = PCB_RCLICK, .x = x, .y = y});
 
     return sd_bus_reply_method_return(msg, "");
 }
@@ -852,8 +928,8 @@ static int menu_event(sd_bus_message *msg, void *userdata, sd_bus_error *error) 
     /* Skip data variant and timestamp */
     sd_bus_message_skip(msg, "vu");
 
-    if (strcmp(event_id, "clicked") == 0 && tray->on_menu_item) {
-        tray->on_menu_item((uint32_t)id, tray->on_menu_item_data);
+    if (strcmp(event_id, "clicked") == 0) {
+        enqueue_callback(tray, (pending_cb){.type = PCB_MENU_ITEM, .id = (uint32_t)id});
     }
 
     return sd_bus_reply_method_return(msg, "");
@@ -873,8 +949,8 @@ static int menu_event_group(sd_bus_message *msg, void *userdata, sd_bus_error *e
         sd_bus_message_skip(msg, "vu");
         sd_bus_message_exit_container(msg);
 
-        if (strcmp(event_id, "clicked") == 0 && tray->on_menu_item) {
-            tray->on_menu_item((uint32_t)id, tray->on_menu_item_data);
+        if (strcmp(event_id, "clicked") == 0) {
+            enqueue_callback(tray, (pending_cb){.type = PCB_MENU_ITEM, .id = (uint32_t)id});
         }
     }
     sd_bus_message_exit_container(msg);
@@ -903,7 +979,7 @@ static int menu_about_to_show(sd_bus_message *msg, void *userdata, sd_bus_error 
         /* Only fire on genuine user-initiated opens, not on AboutToShow
            calls triggered by a recent LayoutUpdated from a menu rebuild. */
         if (now_ms - tray->last_layout_updated_ms > 300) {
-            tray->on_menu_opened(tray->on_menu_opened_data);
+            enqueue_callback(tray, (pending_cb){.type = PCB_MENU_OPENED});
         }
     }
     return sd_bus_reply_method_return(msg, "b", 0);
@@ -996,6 +1072,7 @@ sni_tray *sni_tray_create(const uint8_t *icon_data, size_t icon_len,
     if (!tray) return NULL;
 
     pthread_mutex_init(&tray->click_lock, NULL);
+    pthread_mutex_init(&tray->bus_lock, NULL);
     tray->next_id = 1;
     tray->menu_version = 1;
     struct timespec ts;
@@ -1021,9 +1098,14 @@ sni_tray *sni_tray_create(const uint8_t *icon_data, size_t icon_len,
 int sni_tray_run(sni_tray *tray) {
     int r;
 
+    /* Hold bus_lock across the whole setup: the moment tray->bus becomes
+     * non-NULL a foreign thread may try to emit, and the bus is not yet ready. */
+    bus_lock(tray);
+
     r = sd_bus_open_user(&tray->bus);
     if (r < 0) {
         fprintf(stderr, "sni: failed to connect to session bus: %s\n", strerror(-r));
+        bus_unlock(tray);
         return r;
     }
 
@@ -1032,6 +1114,7 @@ int sni_tray_run(sni_tray *tray) {
                                  SNI_IFACE, sni_vtable, tray);
     if (r < 0) {
         fprintf(stderr, "sni: failed to add SNI vtable: %s\n", strerror(-r));
+        bus_unlock(tray);
         return r;
     }
 
@@ -1040,6 +1123,7 @@ int sni_tray_run(sni_tray *tray) {
                                  MENU_IFACE, menu_vtable, tray);
     if (r < 0) {
         fprintf(stderr, "sni: failed to add menu vtable: %s\n", strerror(-r));
+        bus_unlock(tray);
         return r;
     }
 
@@ -1051,6 +1135,7 @@ int sni_tray_run(sni_tray *tray) {
     r = sd_bus_request_name(tray->bus, name, 0);
     if (r < 0) {
         fprintf(stderr, "sni: failed to request bus name '%s': %s\n", name, strerror(-r));
+        bus_unlock(tray);
         return r;
     }
 
@@ -1068,11 +1153,15 @@ int sni_tray_run(sni_tray *tray) {
     }
 
     tray->running = 1;
+    int bus_fd = sd_bus_get_fd(tray->bus);
+
+    bus_unlock(tray);
 
     /* Event loop: process D-Bus messages until quit is signaled */
-    int bus_fd = sd_bus_get_fd(tray->bus);
     while (tray->running) {
-        /* Process pending messages first */
+        /* Process pending messages. The lock serializes against the mutators
+         * which emit signals from foreign threads (issue #405). */
+        bus_lock(tray);
         for (;;) {
             r = sd_bus_process(tray->bus, NULL);
             if (r < 0) {
@@ -1082,9 +1171,15 @@ int sni_tray_run(sni_tray *tray) {
             }
             if (r == 0) break; /* no more to process */
         }
+        bus_unlock(tray);
+
+        /* Fire deferred user callbacks WITHOUT bus_lock held, so they may
+         * safely re-enter the mutators from this thread. */
+        flush_callbacks(tray);
+
         if (!tray->running) break;
 
-        /* Wait for bus activity or quit signal */
+        /* Wait for bus activity or quit signal (no bus access here). */
         fd_set rfds;
         FD_ZERO(&rfds);
         FD_SET(bus_fd, &rfds);
@@ -1099,7 +1194,8 @@ int sni_tray_run(sni_tray *tray) {
         }
     }
 
-    /* Teardown */
+    /* Teardown under the lock so a late mutator can't touch a closing bus. */
+    bus_lock(tray);
     sd_bus_release_name(tray->bus, tray->bus_name);
     sd_bus_slot_unref(tray->sni_slot);
     sd_bus_slot_unref(tray->menu_slot);
@@ -1107,6 +1203,7 @@ int sni_tray_run(sni_tray *tray) {
     tray->menu_slot = NULL;
     sd_bus_flush_close_unref(tray->bus);
     tray->bus = NULL;
+    bus_unlock(tray);
 
     return 0;
 }
@@ -1128,7 +1225,9 @@ void sni_tray_destroy(sni_tray *tray) {
     free(tray->bus_name);
     free_pixmap_list(&tray->icon_pixmaps);
     free_menu_items(tray);
+    free(tray->pending);
     pthread_mutex_destroy(&tray->click_lock);
+    pthread_mutex_destroy(&tray->bus_lock);
     free(tray);
 }
 
@@ -1138,25 +1237,31 @@ void sni_tray_destroy(sni_tray *tray) {
 
 void sni_tray_set_icon(sni_tray *tray, const uint8_t *icon_data, size_t icon_len) {
     if (!tray) return;
+    bus_lock(tray);
     free_pixmap_list(&tray->icon_pixmaps);
     tray->icon_pixmaps = build_pixmaps(icon_data, icon_len);
     emit_new_icon(tray);
     /* Keep tooltip icon consistent */
     emit_sni_properties_changed(tray, "ToolTip");
+    bus_unlock(tray);
 }
 
 void sni_tray_set_title(sni_tray *tray, const char *title) {
     if (!tray) return;
+    bus_lock(tray);
     free(tray->title);
     tray->title = title ? strdup(title) : NULL;
     emit_new_title(tray);
+    bus_unlock(tray);
 }
 
 void sni_tray_set_tooltip(sni_tray *tray, const char *tooltip) {
     if (!tray) return;
+    bus_lock(tray);
     free(tray->tooltip_text);
     tray->tooltip_text = tooltip ? strdup(tooltip) : NULL;
     emit_sni_properties_changed(tray, "ToolTip");
+    bus_unlock(tray);
 }
 
 /* ========================================================================== */
@@ -1211,6 +1316,7 @@ static void update_menu_path_after_add(sni_tray *tray) {
 
 void sni_tray_reset_menu(sni_tray *tray) {
     if (!tray) return;
+    bus_lock(tray);
     free_menu_items(tray);
     tray->menu_version++;
     emit_layout_updated(tray);
@@ -1220,26 +1326,31 @@ void sni_tray_reset_menu(sni_tray *tray) {
         tray->current_menu_path = "/";
         emit_sni_properties_changed(tray, "Menu");
     }
+    bus_unlock(tray);
 }
 
 uint32_t sni_tray_add_menu_item(sni_tray *tray, const char *title,
                                  const char *tooltip) {
     if (!tray) return 0;
+    bus_lock(tray);
     menu_item *item = alloc_item(tray);
-    if (!item) return 0;
+    if (!item) { bus_unlock(tray); return 0; }
     item->id = (int32_t)tray->next_id++;
     item->label = title ? strdup(title) : NULL;
     item->tooltip = tooltip ? strdup(tooltip) : NULL;
     item->parent_id = 0;
     update_menu_path_after_add(tray);
-    return (uint32_t)item->id;
+    uint32_t ret = (uint32_t)item->id;
+    bus_unlock(tray);
+    return ret;
 }
 
 uint32_t sni_tray_add_menu_item_checkbox(sni_tray *tray, const char *title,
                                           const char *tooltip, int checked) {
     if (!tray) return 0;
+    bus_lock(tray);
     menu_item *item = alloc_item(tray);
-    if (!item) return 0;
+    if (!item) { bus_unlock(tray); return 0; }
     item->id = (int32_t)tray->next_id++;
     item->label = title ? strdup(title) : NULL;
     item->tooltip = tooltip ? strdup(tooltip) : NULL;
@@ -1247,38 +1358,46 @@ uint32_t sni_tray_add_menu_item_checkbox(sni_tray *tray, const char *title,
     item->checkable = 1;
     item->checked = checked;
     update_menu_path_after_add(tray);
-    return (uint32_t)item->id;
+    uint32_t ret = (uint32_t)item->id;
+    bus_unlock(tray);
+    return ret;
 }
 
 void sni_tray_add_separator(sni_tray *tray) {
     if (!tray) return;
+    bus_lock(tray);
     menu_item *item = alloc_item(tray);
-    if (!item) return;
+    if (!item) { bus_unlock(tray); return; }
     item->id = (int32_t)tray->next_id++;
     item->is_separator = 1;
     item->parent_id = 0;
     update_menu_path_after_add(tray);
+    bus_unlock(tray);
 }
 
 uint32_t sni_tray_add_sub_menu_item(sni_tray *tray, uint32_t parent_id,
                                      const char *title, const char *tooltip) {
     if (!tray) return 0;
+    bus_lock(tray);
     menu_item *item = alloc_item(tray);
-    if (!item) return 0;
+    if (!item) { bus_unlock(tray); return 0; }
     item->id = (int32_t)tray->next_id++;
     item->label = title ? strdup(title) : NULL;
     item->tooltip = tooltip ? strdup(tooltip) : NULL;
     item->parent_id = (int32_t)parent_id;
     update_menu_path_after_add(tray);
-    return (uint32_t)item->id;
+    uint32_t ret = (uint32_t)item->id;
+    bus_unlock(tray);
+    return ret;
 }
 
 uint32_t sni_tray_add_sub_menu_item_checkbox(sni_tray *tray, uint32_t parent_id,
                                               const char *title, const char *tooltip,
                                               int checked) {
     if (!tray) return 0;
+    bus_lock(tray);
     menu_item *item = alloc_item(tray);
-    if (!item) return 0;
+    if (!item) { bus_unlock(tray); return 0; }
     item->id = (int32_t)tray->next_id++;
     item->label = title ? strdup(title) : NULL;
     item->tooltip = tooltip ? strdup(tooltip) : NULL;
@@ -1286,17 +1405,21 @@ uint32_t sni_tray_add_sub_menu_item_checkbox(sni_tray *tray, uint32_t parent_id,
     item->checkable = 1;
     item->checked = checked;
     update_menu_path_after_add(tray);
-    return (uint32_t)item->id;
+    uint32_t ret = (uint32_t)item->id;
+    bus_unlock(tray);
+    return ret;
 }
 
 void sni_tray_add_sub_separator(sni_tray *tray, uint32_t parent_id) {
     if (!tray) return;
+    bus_lock(tray);
     menu_item *item = alloc_item(tray);
-    if (!item) return;
+    if (!item) { bus_unlock(tray); return; }
     item->id = (int32_t)tray->next_id++;
     item->is_separator = 1;
     item->parent_id = (int32_t)parent_id;
     update_menu_path_after_add(tray);
+    bus_unlock(tray);
 }
 
 /* ========================================================================== */
@@ -1305,55 +1428,70 @@ void sni_tray_add_sub_separator(sni_tray *tray, uint32_t parent_id) {
 
 int sni_tray_item_set_title(sni_tray *tray, uint32_t id, const char *title) {
     if (!tray) return 0;
+    bus_lock(tray);
     menu_item *item = find_item(tray, (int32_t)id);
-    if (!item) return 0;
+    if (!item) { bus_unlock(tray); return 0; }
     free(item->label);
     item->label = title ? strdup(title) : NULL;
     emit_layout_updated(tray);
+    bus_unlock(tray);
     return 1;
 }
 
 void sni_tray_item_enable(sni_tray *tray, uint32_t id) {
     if (!tray) return;
+    bus_lock(tray);
     menu_item *item = find_item(tray, (int32_t)id);
     if (item) { item->disabled = 0; emit_layout_updated(tray); }
+    bus_unlock(tray);
 }
 
 void sni_tray_item_disable(sni_tray *tray, uint32_t id) {
     if (!tray) return;
+    bus_lock(tray);
     menu_item *item = find_item(tray, (int32_t)id);
     if (item) { item->disabled = 1; emit_layout_updated(tray); }
+    bus_unlock(tray);
 }
 
 void sni_tray_item_show(sni_tray *tray, uint32_t id) {
     if (!tray) return;
+    bus_lock(tray);
     menu_item *item = find_item(tray, (int32_t)id);
     if (item) { item->visible = 1; emit_layout_updated(tray); }
+    bus_unlock(tray);
 }
 
 void sni_tray_item_hide(sni_tray *tray, uint32_t id) {
     if (!tray) return;
+    bus_lock(tray);
     menu_item *item = find_item(tray, (int32_t)id);
     if (item) { item->visible = 0; emit_layout_updated(tray); }
+    bus_unlock(tray);
 }
 
 void sni_tray_item_check(sni_tray *tray, uint32_t id) {
     if (!tray) return;
+    bus_lock(tray);
     menu_item *item = find_item(tray, (int32_t)id);
     if (item) { item->checked = 1; emit_layout_updated(tray); }
+    bus_unlock(tray);
 }
 
 void sni_tray_item_uncheck(sni_tray *tray, uint32_t id) {
     if (!tray) return;
+    bus_lock(tray);
     menu_item *item = find_item(tray, (int32_t)id);
     if (item) { item->checked = 0; emit_layout_updated(tray); }
+    bus_unlock(tray);
 }
 
 void sni_tray_item_set_icon(sni_tray *tray, uint32_t id,
                              const uint8_t *icon_data, size_t icon_len) {
     if (!tray) return;
+    bus_lock(tray);
     menu_item *item = find_item(tray, (int32_t)id);
-    if (!item) return;
+    if (!item) { bus_unlock(tray); return; }
     free(item->icon_data);
     item->icon_data = NULL;
     item->icon_len = 0;
@@ -1365,14 +1503,16 @@ void sni_tray_item_set_icon(sni_tray *tray, uint32_t id,
         }
     }
     emit_layout_updated(tray);
+    bus_unlock(tray);
 }
 
 void sni_tray_item_set_shortcut(sni_tray *tray, uint32_t id,
                                  const char *key,
                                  int ctrl, int shift, int alt, int super_mod) {
     if (!tray) return;
+    bus_lock(tray);
     menu_item *item = find_item(tray, (int32_t)id);
-    if (!item) return;
+    if (!item) { bus_unlock(tray); return; }
     free(item->shortcut_key);
     item->shortcut_key = key ? strdup(key) : NULL;
     item->shortcut_ctrl = ctrl;
@@ -1380,4 +1520,5 @@ void sni_tray_item_set_shortcut(sni_tray *tray, uint32_t id,
     item->shortcut_alt = alt;
     item->shortcut_super = super_mod;
     emit_layout_updated(tray);
+    bus_unlock(tray);
 }
