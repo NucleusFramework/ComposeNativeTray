@@ -328,7 +328,7 @@ public func tray_update(_ tray: UnsafeMutableRawPointer) {
     // Update icon
     if let iconPath = iconPathPtr.flatMap({ String(cString: $0) }),
        let image = NSImage(contentsOfFile: iconPath) {
-        let height = NSStatusBar.system.thickness
+        let height = min(NSStatusBar.system.thickness - 4, 18)
         let width  = image.size.width * (height / image.size.height)
         image.size = NSSize(width: width, height: height)
         statusItem.button?.image = image
@@ -338,24 +338,19 @@ public func tray_update(_ tray: UnsafeMutableRawPointer) {
     statusItem.button?.toolTip = tooltipPtr.flatMap { String(cString: $0) }
 
     // Menu and actions configuration
-    // Important: never set statusItem.menu to keep highlight control
     statusItem.menu = nil
 
     if let menuPtr = menuPtr {
-        // Create and store the menu without assigning it to statusItem
         ctx.contextMenu = nativeMenu(from: menuPtr, statusItem: statusItem)
     } else {
         ctx.contextMenu = nil
     }
 
-    // Configure button actions
     if callbackPtr != nil || ctx.contextMenu != nil {
-        // We have either a callback, a menu, or both
         statusItem.button?.target = ctx.clickHandler
         statusItem.button?.action = #selector(InstanceButtonClickHandler.handleClick(_:))
         statusItem.button?.sendAction(on: NSEvent.EventTypeMask.leftMouseUp.union(.rightMouseUp))
     } else {
-        // Neither callback nor menu
         statusItem.button?.target = nil
         statusItem.button?.action = nil
     }
@@ -546,8 +541,7 @@ public func tray_set_icons_for_appearance(
 ) {
     let doWork = {
         guard let tray = tray, let ctx = contexts[tray] else { return }
-        let height = NSStatusBar.system.thickness
-
+        let height = min(NSStatusBar.system.thickness - 4, 18)
         if let path = lightIconPath.flatMap({ String(cString: $0) }),
            let img = NSImage(contentsOfFile: path) {
             let w = img.size.width * (height / img.size.height)
@@ -560,7 +554,6 @@ public func tray_set_icons_for_appearance(
             img.size = NSSize(width: w, height: height)
             ctx.darkImage = img
         }
-
         // Apply the correct variant for the current appearance
         if let button = ctx.statusItem.button {
             let isDark = button.effectiveAppearance
@@ -570,7 +563,6 @@ public func tray_set_icons_for_appearance(
             }
         }
     }
-
     if Thread.isMainThread { doWork() }
     else { DispatchQueue.main.async { doWork() } }
 }
