@@ -29,7 +29,7 @@ kotlin {
 }
 
 nucleus.application {
-    mainClass = "com.kdroid.composetray.demo.TrayAppDemoKt"
+    mainClass = "dev.nucleusframework.composenativetray.demo.TrayAppDemoKt"
 
     buildTypes {
         release {
@@ -62,7 +62,7 @@ nucleus.application {
         packageVersion = "1.0.0"
 
         macOS {
-            bundleID = "com.kdroid.composetray.demo"
+            bundleID = "dev.nucleusframework.composenativetray.demo"
             appCategory = "public.app-category.utilities"
             dockName = "TrayDemo"
         }

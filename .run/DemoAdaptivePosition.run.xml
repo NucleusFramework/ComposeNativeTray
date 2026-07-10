@@ -4,7 +4,7 @@
       <option name="executionName" />
       <option name="externalProjectPath" value="$PROJECT_DIR$/demo" />
       <option name="externalSystemIdString" value="GRADLE" />
-      <option name="scriptParameters" value="-DmainClass=com.kdroid.composetray.demo.DemoAdaptivePositionWindowsKt --quiet" />
+      <option name="scriptParameters" value="-DmainClass=dev.nucleusframework.composenativetray.demo.DemoAdaptivePositionWindowsKt --quiet" />
       <option name="taskDescriptions">
         <list />
       </option>

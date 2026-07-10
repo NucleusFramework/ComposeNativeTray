@@ -1,8 +1,8 @@
 /*
  * jni_bridge.c - JNI bridge for ComposeNativeTray Windows native library.
  *
- * Target Kotlin class: com.kdroid.composetray.lib.windows.WindowsNativeBridge
- * JNI prefix:          Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_
+ * Target Kotlin class: dev.nucleusframework.composenativetray.lib.windows.WindowsNativeBridge
+ * JNI prefix:          Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_
  *
  * Follows the same patterns as macOS MacTrayBridge.m and Linux jni_bridge.c:
  * - JavaVM cache with JNI_OnLoad
@@ -162,7 +162,7 @@ static char *jni_strdup(JNIEnv *env, jstring jstr) {
 /* ========================================================================== */
 
 JNIEXPORT jlong JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeCreateTray(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeCreateTray(
     JNIEnv *env, jclass clazz, jstring iconPath, jstring tooltip)
 {
     (void)clazz;
@@ -176,7 +176,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeCreateTray(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeFreeTray(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeFreeTray(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)clazz;
@@ -194,7 +194,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeFreeTray(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetTrayIcon(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeSetTrayIcon(
     JNIEnv *env, jclass clazz, jlong handle, jstring iconPath)
 {
     (void)clazz;
@@ -205,7 +205,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetTrayIcon(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetTrayTooltip(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeSetTrayTooltip(
     JNIEnv *env, jclass clazz, jlong handle, jstring tooltip)
 {
     (void)clazz;
@@ -216,7 +216,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetTrayTooltip
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetTrayCallback(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeSetTrayCallback(
     JNIEnv *env, jclass clazz, jlong handle, jobject callback)
 {
     (void)clazz;
@@ -227,7 +227,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetTrayCallbac
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetMenuOpenedCallback(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeSetMenuOpenedCallback(
     JNIEnv *env, jclass clazz, jlong handle, jobject callback)
 {
     (void)clazz;
@@ -238,7 +238,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetMenuOpenedC
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetTrayMenu(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeSetTrayMenu(
     JNIEnv *env, jclass clazz, jlong trayHandle, jlong menuHandle)
 {
     (void)env; (void)clazz;
@@ -248,7 +248,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetTrayMenu(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeClearTrayMenu(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeClearTrayMenu(
     JNIEnv *env, jclass clazz, jlong trayHandle)
 {
     (void)env; (void)clazz;
@@ -257,7 +257,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeClearTrayMenu(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeInitTray(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeInitTray(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)env; (void)clazz;
@@ -267,7 +267,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeInitTray(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeLoopTray(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeLoopTray(
     JNIEnv *env, jclass clazz, jint blocking)
 {
     (void)env; (void)clazz;
@@ -275,7 +275,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeLoopTray(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeUpdateTray(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeUpdateTray(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)env; (void)clazz;
@@ -284,7 +284,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeUpdateTray(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeExitTray(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeExitTray(
     JNIEnv *env, jclass clazz)
 {
     (void)env; (void)clazz;
@@ -298,7 +298,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeExitTray(
 /* ========================================================================== */
 
 JNIEXPORT jlong JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeCreateMenuItems(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeCreateMenuItems(
     JNIEnv *env, jclass clazz, jint count)
 {
     (void)env; (void)clazz;
@@ -309,7 +309,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeCreateMenuItem
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetMenuItem(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeSetMenuItem(
     JNIEnv *env, jclass clazz, jlong menuHandle, jint index,
     jstring text, jstring iconPath, jint disabled, jint checked)
 {
@@ -331,7 +331,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetMenuItem(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetMenuItemCallback(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeSetMenuItemCallback(
     JNIEnv *env, jclass clazz, jlong menuHandle, jint index, jobject callback)
 {
     (void)clazz;
@@ -343,7 +343,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetMenuItemCal
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetMenuItemSubmenu(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeSetMenuItemSubmenu(
     JNIEnv *env, jclass clazz, jlong menuHandle, jint index, jlong submenuHandle)
 {
     (void)env; (void)clazz;
@@ -353,7 +353,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeSetMenuItemSub
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeFreeMenuItems(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeFreeMenuItems(
     JNIEnv *env, jclass clazz, jlong menuHandle, jint count)
 {
     (void)clazz;
@@ -374,7 +374,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeFreeMenuItems(
 /* ========================================================================== */
 
 JNIEXPORT jint JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeGetNotificationIconsPosition(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeGetNotificationIconsPosition(
     JNIEnv *env, jclass clazz, jintArray outXY)
 {
     (void)clazz;
@@ -386,7 +386,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeGetNotificatio
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeGetNotificationIconsRegion(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeGetNotificationIconsRegion(
     JNIEnv *env, jclass clazz)
 {
     (void)clazz;
@@ -432,7 +432,7 @@ static LRESULT CALLBACK lowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lPara
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeInstallMouseHook(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeInstallMouseHook(
     JNIEnv *env, jclass clazz, jobject callback)
 {
     (void)clazz;
@@ -462,7 +462,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeInstallMouseHo
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeRunMouseHookLoop(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeRunMouseHookLoop(
     JNIEnv *env, jclass clazz, jlong hookId)
 {
     (void)env; (void)clazz;
@@ -477,7 +477,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeRunMouseHookLo
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeStopMouseHook(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeStopMouseHook(
     JNIEnv *env, jclass clazz, jlong hookId)
 {
     (void)clazz;
@@ -507,7 +507,7 @@ Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeStopMouseHook(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_windows_WindowsNativeBridge_nativeGetLastMouseHookClick(
+Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nativeGetLastMouseHookClick(
     JNIEnv *env, jclass clazz, jintArray outXY)
 {
     (void)clazz;

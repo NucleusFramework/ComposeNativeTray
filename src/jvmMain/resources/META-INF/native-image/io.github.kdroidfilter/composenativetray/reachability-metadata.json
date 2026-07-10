@@ -1,11 +1,11 @@
 {
     "reflection": [
         {
-            "type": "com.kdroid.composetray.lib.mac.MacNativeBridge",
+            "type": "dev.nucleusframework.composenativetray.lib.mac.MacNativeBridge",
             "jniAccessible": true
         },
         {
-            "type": "com.kdroid.composetray.lib.mac.MacNativeBridge$ThemeChangeCallback",
+            "type": "dev.nucleusframework.composenativetray.lib.mac.MacNativeBridge$ThemeChangeCallback",
             "jniAccessible": true,
             "methods": [
                 {
@@ -15,15 +15,15 @@
             ]
         },
         {
-            "type": "com.kdroid.composetray.lib.windows.WindowsNativeBridge",
+            "type": "dev.nucleusframework.composenativetray.lib.windows.WindowsNativeBridge",
             "jniAccessible": true
         },
         {
-            "type": "com.kdroid.composetray.lib.linux.LinuxNativeBridge",
+            "type": "dev.nucleusframework.composenativetray.lib.linux.LinuxNativeBridge",
             "jniAccessible": true
         },
         {
-            "type": "com.kdroid.composetray.lib.linux.JniRunnable",
+            "type": "dev.nucleusframework.composenativetray.lib.linux.JniRunnable",
             "jniAccessible": true,
             "methods": [
                 {

@@ -562,7 +562,7 @@ Add the following to your ProGuard rules file:
 
 ```
 -keep class com.sun.jna.** { *; }
--keep class com.kdroid.composetray.** { *; }
+-keep class dev.nucleusframework.composenativetray.** { *; }
 ```
 
 # 🧪 TrayApp (Alpha)
