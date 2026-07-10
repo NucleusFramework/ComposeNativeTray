@@ -1,8 +1,8 @@
 /*
  * jni_bridge.c – JNI bridge for ComposeNativeTray Linux native library.
  *
- * Target Kotlin class: com.kdroid.composetray.lib.linux.LinuxNativeBridge
- * JNI prefix:          Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_
+ * Target Kotlin class: dev.nucleusframework.composenativetray.lib.linux.LinuxNativeBridge
+ * JNI prefix:          Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_
  *
  * Follows the same patterns as macOS MacTrayBridge.m:
  * - JavaVM cache with JNI_OnLoad
@@ -161,7 +161,7 @@ static void menu_opened_trampoline(void *userdata) {
 /* ── Lifecycle ──────────────────────────────────────────────────────── */
 
 JNIEXPORT jlong JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeCreate(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeCreate(
     JNIEnv *env, jclass clazz, jbyteArray iconBytes, jstring tooltip)
 {
     (void)clazz;
@@ -189,7 +189,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeCreate(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeRun(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeRun(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)env; (void)clazz;
@@ -199,7 +199,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeRun(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeQuit(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeQuit(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)env; (void)clazz;
@@ -208,7 +208,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeQuit(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeDestroy(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeDestroy(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)clazz;
@@ -229,7 +229,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeDestroy(
 /* ── Tray properties ────────────────────────────────────────────────── */
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetIcon(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeSetIcon(
     JNIEnv *env, jclass clazz, jlong handle, jbyteArray iconBytes)
 {
     (void)clazz;
@@ -243,7 +243,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetIcon(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetTitle(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeSetTitle(
     JNIEnv *env, jclass clazz, jlong handle, jstring title)
 {
     (void)clazz;
@@ -255,7 +255,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetTitle(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetTooltip(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeSetTooltip(
     JNIEnv *env, jclass clazz, jlong handle, jstring tooltip)
 {
     (void)clazz;
@@ -269,7 +269,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetTooltip(
 /* ── Callbacks ──────────────────────────────────────────────────────── */
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetClickCallback(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeSetClickCallback(
     JNIEnv *env, jclass clazz, jlong handle, jobject callback)
 {
     (void)clazz;
@@ -283,7 +283,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetClickCallback(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetRClickCallback(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeSetRClickCallback(
     JNIEnv *env, jclass clazz, jlong handle, jobject callback)
 {
     (void)clazz;
@@ -297,7 +297,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetRClickCallback(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetMenuItemCallback(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeSetMenuItemCallback(
     JNIEnv *env, jclass clazz, jlong handle, jint menuId, jobject callback)
 {
     (void)clazz;
@@ -309,7 +309,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetMenuItemCallbac
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetMenuOpenedCallback(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeSetMenuOpenedCallback(
     JNIEnv *env, jclass clazz, jlong handle, jobject callback)
 {
     (void)clazz;
@@ -325,7 +325,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeSetMenuOpenedCallb
 /* ── Click position ─────────────────────────────────────────────────── */
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeGetLastClickXY(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeGetLastClickXY(
     JNIEnv *env, jclass clazz, jlong handle, jintArray outXY)
 {
     (void)clazz;
@@ -340,7 +340,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeGetLastClickXY(
 /* ── Menu management ────────────────────────────────────────────────── */
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeResetMenu(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeResetMenu(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)env; (void)clazz;
@@ -352,7 +352,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeResetMenu(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddMenuItem(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeAddMenuItem(
     JNIEnv *env, jclass clazz, jlong handle, jstring title, jstring tooltip)
 {
     (void)clazz;
@@ -367,7 +367,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddMenuItem(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddMenuItemCheckbox(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeAddMenuItemCheckbox(
     JNIEnv *env, jclass clazz, jlong handle, jstring title, jstring tooltip, jboolean checked)
 {
     (void)clazz;
@@ -382,7 +382,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddMenuItemCheckbo
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddSeparator(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeAddSeparator(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)env; (void)clazz;
@@ -391,7 +391,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddSeparator(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddSubMenuItem(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeAddSubMenuItem(
     JNIEnv *env, jclass clazz, jlong handle, jint parentId,
     jstring title, jstring tooltip)
 {
@@ -407,7 +407,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddSubMenuItem(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddSubMenuItemCheckbox(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeAddSubMenuItemCheckbox(
     JNIEnv *env, jclass clazz, jlong handle, jint parentId,
     jstring title, jstring tooltip, jboolean checked)
 {
@@ -423,7 +423,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddSubMenuItemChec
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddSubSeparator(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeAddSubSeparator(
     JNIEnv *env, jclass clazz, jlong handle, jint parentId)
 {
     (void)env; (void)clazz;
@@ -434,7 +434,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeAddSubSeparator(
 /* ── Per-item operations ────────────────────────────────────────────── */
 
 JNIEXPORT jint JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemSetTitle(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeItemSetTitle(
     JNIEnv *env, jclass clazz, jlong handle, jint id, jstring title)
 {
     (void)clazz;
@@ -447,7 +447,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemSetTitle(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemEnable(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeItemEnable(
     JNIEnv *env, jclass clazz, jlong handle, jint id)
 {
     (void)env; (void)clazz;
@@ -456,7 +456,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemEnable(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemDisable(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeItemDisable(
     JNIEnv *env, jclass clazz, jlong handle, jint id)
 {
     (void)env; (void)clazz;
@@ -465,7 +465,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemDisable(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemShow(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeItemShow(
     JNIEnv *env, jclass clazz, jlong handle, jint id)
 {
     (void)env; (void)clazz;
@@ -474,7 +474,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemShow(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemHide(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeItemHide(
     JNIEnv *env, jclass clazz, jlong handle, jint id)
 {
     (void)env; (void)clazz;
@@ -483,7 +483,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemHide(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemCheck(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeItemCheck(
     JNIEnv *env, jclass clazz, jlong handle, jint id)
 {
     (void)env; (void)clazz;
@@ -492,7 +492,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemCheck(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemUncheck(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeItemUncheck(
     JNIEnv *env, jclass clazz, jlong handle, jint id)
 {
     (void)env; (void)clazz;
@@ -501,7 +501,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemUncheck(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemSetIcon(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeItemSetIcon(
     JNIEnv *env, jclass clazz, jlong handle, jint id, jbyteArray iconBytes)
 {
     (void)clazz;
@@ -514,7 +514,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemSetIcon(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeItemSetShortcut(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeItemSetShortcut(
     JNIEnv *env, jclass clazz, jlong handle, jint id,
     jstring key, jboolean ctrl, jboolean shift, jboolean alt, jboolean superMod)
 {
@@ -570,7 +570,7 @@ static int ensure_x11(void) {
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeX11OpenDisplay(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeX11OpenDisplay(
     JNIEnv *env, jclass clazz)
 {
     (void)env; (void)clazz;
@@ -580,7 +580,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeX11OpenDisplay(
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeX11DefaultRootWindow(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeX11DefaultRootWindow(
     JNIEnv *env, jclass clazz, jlong displayHandle)
 {
     (void)env; (void)clazz;
@@ -591,7 +591,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeX11DefaultRootWind
 }
 
 JNIEXPORT jint JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeX11QueryPointer(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeX11QueryPointer(
     JNIEnv *env, jclass clazz, jlong displayHandle, jlong rootWindow, jintArray outData)
 {
     (void)clazz;
@@ -615,7 +615,7 @@ Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeX11QueryPointer(
 }
 
 JNIEXPORT void JNICALL
-Java_com_kdroid_composetray_lib_linux_LinuxNativeBridge_nativeX11CloseDisplay(
+Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeX11CloseDisplay(
     JNIEnv *env, jclass clazz, jlong displayHandle)
 {
     (void)env; (void)clazz;

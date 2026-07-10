@@ -1,4 +1,4 @@
--keepclasseswithmembers public class com.kdroid.composetray.demo.DynamicTrayMenuKt {  #
+-keepclasseswithmembers public class dev.nucleusframework.composenativetray.demo.DynamicTrayMenuKt {  #
     public static void main(java.lang.String[]);
 }
 
@@ -21,7 +21,7 @@
 -dontwarn com.sun.jna.platform.**
 
 
--keep class com.kdroid.composetray.** { *; }
+-keep class dev.nucleusframework.composenativetray.** { *; }
 
 -assumenosideeffects public class androidx.compose.runtime.ComposerKt {
     void sourceInformation(androidx.compose.runtime.Composer,java.lang.String);

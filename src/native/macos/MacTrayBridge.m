@@ -1,8 +1,8 @@
 /*
  * MacTrayBridge.m – JNI bridge for ComposeNativeTray macOS native library.
  *
- * Target Kotlin class: com.kdroid.composetray.lib.mac.MacNativeBridge
- * JNI prefix:          Java_com_kdroid_composetray_lib_mac_MacNativeBridge_
+ * Target Kotlin class: dev.nucleusframework.composenativetray.lib.mac.MacNativeBridge
+ * JNI prefix:          Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_
  */
 
 #import <jni.h>
@@ -38,7 +38,7 @@ static JNIEnv *getJNIEnv(void) {
 /* ========================================================================== */
 /*  JNI class/method name prefix                                              */
 /* ========================================================================== */
-#define JNI_PREFIX Java_com_kdroid_composetray_lib_mac_MacNativeBridge_
+#define JNI_PREFIX Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_
 
 /* Concatenation helper */
 #define JNI_FN(name) JNICALL JNI_PREFIX ## name
@@ -145,7 +145,7 @@ static jmethodID getRunnableRunMethod(JNIEnv *env) {
 
 static jmethodID getThemeChangedMethod(JNIEnv *env) {
     if (g_onThemeChangedMethodID == NULL) {
-        jclass cls = (*env)->FindClass(env, "com/kdroid/composetray/lib/mac/MacNativeBridge$ThemeChangeCallback");
+        jclass cls = (*env)->FindClass(env, "dev/nucleusframework/composenativetray/lib/mac/MacNativeBridge$ThemeChangeCallback");
         if (cls) {
             g_onThemeChangedMethodID = (*env)->GetMethodID(env, cls, "onThemeChanged", "(I)V");
             (*env)->DeleteLocalRef(env, cls);
@@ -207,7 +207,7 @@ static void themeCbTrampoline(int isDark) {
 /*  Tray lifecycle                                                            */
 /* ========================================================================== */
 
-JNIEXPORT jlong JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeCreateTray(
+JNIEXPORT jlong JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeCreateTray(
     JNIEnv *env, jclass clazz, jstring iconPath, jstring tooltip)
 {
     (void)clazz;
@@ -227,7 +227,7 @@ JNIEXPORT jlong JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nati
     return (jlong)(uintptr_t)t;
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeFreeTray(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeFreeTray(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)env; (void)clazz;
@@ -239,7 +239,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     free(t);
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetTrayIcon(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetTrayIcon(
     JNIEnv *env, jclass clazz, jlong handle, jstring iconPath)
 {
     (void)clazz;
@@ -251,7 +251,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     (*env)->ReleaseStringUTFChars(env, iconPath, utf);
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetTrayTooltip(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetTrayTooltip(
     JNIEnv *env, jclass clazz, jlong handle, jstring tooltip)
 {
     (void)clazz;
@@ -263,7 +263,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     (*env)->ReleaseStringUTFChars(env, tooltip, utf);
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetTrayCallback(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetTrayCallback(
     JNIEnv *env, jclass clazz, jlong handle, jobject callback)
 {
     (void)clazz;
@@ -273,7 +273,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     t->cb = (callback != NULL) ? trayCbTrampoline : NULL;
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetMenuOpenedCallback(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetMenuOpenedCallback(
     JNIEnv *env, jclass clazz, jlong handle, jobject callback)
 {
     (void)clazz;
@@ -283,7 +283,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     tray_set_menu_opened_callback(t, (callback != NULL) ? menuOpenedCbTrampoline : NULL);
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetTrayMenu(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetTrayMenu(
     JNIEnv *env, jclass clazz, jlong trayHandle, jlong menuHandle)
 {
     (void)env; (void)clazz;
@@ -292,7 +292,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     t->menu = (struct tray_menu_item *)(uintptr_t)menuHandle;
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeClearTrayMenu(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeClearTrayMenu(
     JNIEnv *env, jclass clazz, jlong trayHandle)
 {
     (void)env; (void)clazz;
@@ -301,7 +301,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     t->menu = NULL;
 }
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeInitTray(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeInitTray(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)env; (void)clazz;
@@ -310,14 +310,14 @@ JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     return (jint)tray_init(t);
 }
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeLoopTray(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeLoopTray(
     JNIEnv *env, jclass clazz, jint blocking)
 {
     (void)env; (void)clazz;
     return (jint)tray_loop((int)blocking);
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeUpdateTray(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeUpdateTray(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)env; (void)clazz;
@@ -326,7 +326,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     tray_update(t);
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeDisposeTray(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeDisposeTray(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)clazz;
@@ -342,7 +342,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     free(t);
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeExitTray(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeExitTray(
     JNIEnv *env, jclass clazz)
 {
     (void)env; (void)clazz;
@@ -356,7 +356,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
 /*  Menu items                                                                */
 /* ========================================================================== */
 
-JNIEXPORT jlong JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeCreateMenuItems(
+JNIEXPORT jlong JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeCreateMenuItems(
     JNIEnv *env, jclass clazz, jint count)
 {
     (void)env; (void)clazz;
@@ -365,7 +365,7 @@ JNIEXPORT jlong JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nati
     return (jlong)(uintptr_t)items;
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetMenuItem(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetMenuItem(
     JNIEnv *env, jclass clazz, jlong menuHandle, jint index,
     jstring text, jstring iconPath, jint disabled, jint checked)
 {
@@ -394,7 +394,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     item->checked = (int)checked;
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetMenuItemCallback(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetMenuItemCallback(
     JNIEnv *env, jclass clazz, jlong menuHandle, jint index, jobject callback)
 {
     (void)clazz;
@@ -405,7 +405,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     item->cb = (callback != NULL) ? menuItemCbTrampoline : NULL;
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetMenuItemShortcut(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetMenuItemShortcut(
     JNIEnv *env, jclass clazz, jlong menuHandle, jint index,
     jstring keyEquivalent, jlong modifierMask)
 {
@@ -426,7 +426,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     item->key_equivalent_mod_mask = (unsigned long)modifierMask;
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetMenuItemSubmenu(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetMenuItemSubmenu(
     JNIEnv *env, jclass clazz, jlong menuHandle, jint index, jlong submenuHandle)
 {
     (void)env; (void)clazz;
@@ -435,7 +435,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     items[index].submenu = (struct tray_menu_item *)(uintptr_t)submenuHandle;
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeFreeMenuItems(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeFreeMenuItems(
     JNIEnv *env, jclass clazz, jlong menuHandle, jint count)
 {
     (void)clazz;
@@ -455,7 +455,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
 /*  Theme                                                                     */
 /* ========================================================================== */
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetThemeCallback(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetThemeCallback(
     JNIEnv *env, jclass clazz, jobject callback)
 {
     (void)clazz;
@@ -474,7 +474,7 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     }
 }
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeIsMenuDark(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeIsMenuDark(
     JNIEnv *env, jclass clazz)
 {
     (void)env; (void)clazz;
@@ -485,7 +485,7 @@ JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
 /*  Position                                                                  */
 /* ========================================================================== */
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeGetStatusItemPosition(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeGetStatusItemPosition(
     JNIEnv *env, jclass clazz, jintArray outXY)
 {
     (void)clazz;
@@ -496,7 +496,7 @@ JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     return (jint)precise;
 }
 
-JNIEXPORT jstring JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeGetStatusItemRegion(
+JNIEXPORT jstring JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeGetStatusItemRegion(
     JNIEnv *env, jclass clazz)
 {
     (void)clazz;
@@ -507,7 +507,7 @@ JNIEXPORT jstring JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_na
     return result;
 }
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeGetStatusItemPositionFor(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeGetStatusItemPositionFor(
     JNIEnv *env, jclass clazz, jlong handle, jintArray outXY)
 {
     (void)clazz;
@@ -519,7 +519,7 @@ JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
     return (jint)precise;
 }
 
-JNIEXPORT jstring JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeGetStatusItemRegionFor(
+JNIEXPORT jstring JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeGetStatusItemRegionFor(
     JNIEnv *env, jclass clazz, jlong handle)
 {
     (void)clazz;
@@ -535,7 +535,7 @@ JNIEXPORT jstring JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_na
 /*  Appearance                                                                */
 /* ========================================================================== */
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetIconsForAppearance(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetIconsForAppearance(
     JNIEnv *env, jclass clazz, jlong handle, jstring lightIcon, jstring darkIcon)
 {
     (void)clazz;
@@ -552,49 +552,49 @@ JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
 /*  Window management                                                         */
 /* ========================================================================== */
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeShowInDock(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeShowInDock(
     JNIEnv *env, jclass clazz)
 {
     (void)env; (void)clazz;
     return (jint)tray_show_in_dock();
 }
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeHideFromDock(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeHideFromDock(
     JNIEnv *env, jclass clazz)
 {
     (void)env; (void)clazz;
     return (jint)tray_hide_from_dock();
 }
 
-JNIEXPORT void JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetMoveToActiveSpace(
+JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetMoveToActiveSpace(
     JNIEnv *env, jclass clazz)
 {
     (void)env; (void)clazz;
     tray_set_windows_move_to_active_space();
 }
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeSetMoveToActiveSpaceForWindow(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetMoveToActiveSpaceForWindow(
     JNIEnv *env, jclass clazz, jlong viewPtr)
 {
     (void)env; (void)clazz;
     return (jint)tray_set_move_to_active_space_for_view((void *)(uintptr_t)viewPtr);
 }
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeIsFloatingWindowOnActiveSpace(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeIsFloatingWindowOnActiveSpace(
     JNIEnv *env, jclass clazz)
 {
     (void)env; (void)clazz;
     return (jint)tray_is_floating_window_on_active_space();
 }
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeBringFloatingWindowToFront(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeBringFloatingWindowToFront(
     JNIEnv *env, jclass clazz)
 {
     (void)env; (void)clazz;
     return (jint)tray_bring_floating_window_to_front();
 }
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeIsOnActiveSpaceForView(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeIsOnActiveSpaceForView(
     JNIEnv *env, jclass clazz, jlong viewPtr)
 {
     (void)env; (void)clazz;
@@ -605,7 +605,7 @@ JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativ
 /*  Mouse                                                                     */
 /* ========================================================================== */
 
-JNIEXPORT jint JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeGetMouseButtonState(
+JNIEXPORT jint JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeGetMouseButtonState(
     JNIEnv *env, jclass clazz, jint button)
 {
     (void)env; (void)clazz;
@@ -663,7 +663,7 @@ typedef struct {
 typedef jboolean (JNICALL *JAWT_GetAWT_t)(JNIEnv *env, JAWT *awt);
 #endif /* _JAWT_H_ */
 
-JNIEXPORT jlong JNICALL Java_com_kdroid_composetray_lib_mac_MacNativeBridge_nativeGetAWTViewPtr(
+JNIEXPORT jlong JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeGetAWTViewPtr(
     JNIEnv *env, jclass clazz, jobject awtComponent)
 {
     (void)clazz;
