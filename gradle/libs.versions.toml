@@ -1,7 +1,7 @@
 [versions]
 kermit = "2.0.8"
 kotlin = "2.3.10"
-kotlinx-coroutines = "1.10.2"
+kotlinx-coroutines = "1.11.0"
 compose = "1.10.3"
 platformtools = "0.7.5"
 detekt = "1.23.8"
