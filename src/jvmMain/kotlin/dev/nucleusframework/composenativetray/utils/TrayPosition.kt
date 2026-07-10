@@ -5,10 +5,8 @@ import androidx.compose.ui.window.WindowPosition
 import dev.nucleusframework.composenativetray.lib.mac.MacNativeBridge
 import dev.nucleusframework.composenativetray.lib.windows.WindowsNativeBridge
 import dev.nucleusframework.composenativetray.tray.impl.MacTrayInitializer
-import io.github.kdroidfilter.platformtools.LinuxDesktopEnvironment
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.detectLinuxDesktopEnvironment
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.core.runtime.LinuxDesktopEnvironment
+import dev.nucleusframework.core.runtime.Platform
 import java.awt.GraphicsEnvironment
 import java.awt.Rectangle
 import java.awt.Toolkit
@@ -250,10 +248,10 @@ internal fun getWindowsTrayPosition(nativeResult: String?): TrayPosition =
 
 /** OS → Tray corner heuristics */
 fun getTrayPosition(): TrayPosition {
-    return when (getOperatingSystem()) {
-        OperatingSystem.WINDOWS -> getWindowsTrayPosition(WindowsNativeBridge.nativeGetNotificationIconsRegion())
-        OperatingSystem.MACOS -> getMacTrayPosition(MacNativeBridge.nativeGetStatusItemRegion())
-        OperatingSystem.LINUX -> {
+    return when (Platform.Current) {
+        Platform.Windows -> getWindowsTrayPosition(WindowsNativeBridge.nativeGetNotificationIconsRegion())
+        Platform.MacOS -> getMacTrayPosition(MacNativeBridge.nativeGetStatusItemRegion())
+        Platform.Linux -> {
             TrayClickTracker.getLastClickPosition()?.position
                 ?: loadTrayClickPosition()?.position
                 ?: run {
@@ -266,16 +264,16 @@ fun getTrayPosition(): TrayPosition {
                         runCatching { TrayPosition.valueOf(it) }.getOrNull()
                     }
                 }
-                ?: when (detectLinuxDesktopEnvironment()) {
+                ?: when (LinuxDesktopEnvironment.Current) {
                     LinuxDesktopEnvironment.KDE -> TrayPosition.BOTTOM_RIGHT
-                    LinuxDesktopEnvironment.CINNAMON -> TrayPosition.BOTTOM_RIGHT
-                    LinuxDesktopEnvironment.GNOME -> TrayPosition.TOP_RIGHT
-                    LinuxDesktopEnvironment.MATE -> TrayPosition.TOP_RIGHT
+                    LinuxDesktopEnvironment.Cinnamon -> TrayPosition.BOTTOM_RIGHT
+                    LinuxDesktopEnvironment.Gnome -> TrayPosition.TOP_RIGHT
+                    LinuxDesktopEnvironment.Mate -> TrayPosition.TOP_RIGHT
                     LinuxDesktopEnvironment.XFCE -> TrayPosition.TOP_RIGHT
                     else -> TrayPosition.TOP_RIGHT
                 }
         }
-        OperatingSystem.UNKNOWN -> TrayPosition.TOP_RIGHT
+        Platform.Unknown -> TrayPosition.TOP_RIGHT
         else -> TrayPosition.TOP_RIGHT
     }
 }
@@ -289,7 +287,7 @@ fun getTrayWindowPosition(
 ): WindowPosition {
     val screenSize = Toolkit.getDefaultToolkit().screenSize
 
-    if (getOperatingSystem() == OperatingSystem.WINDOWS) {
+    if (Platform.Current == Platform.Windows) {
         val freshPos =
             TrayClickTracker.getLastClickPosition()
                 ?: loadTrayClickPosition()
@@ -317,7 +315,7 @@ fun getTrayWindowPosition(
         )
     }
 
-    if (getOperatingSystem() == OperatingSystem.MACOS) {
+    if (Platform.Current == Platform.MacOS) {
         val (x0, y0) = getStatusItemXYForMac()
         if (x0 != 0 || y0 != 0) {
             TrayClickTracker.setClickPosition(x0, y0, getTrayPosition())
@@ -336,7 +334,7 @@ fun getTrayWindowPosition(
         }
     }
 
-    if (getOperatingSystem() == OperatingSystem.LINUX) {
+    if (Platform.Current == Platform.Linux) {
         val clickPos = TrayClickTracker.getLastClickPosition() ?: loadTrayClickPosition()
         if (clickPos != null) {
             return calculateWindowPositionFromClick(
@@ -379,10 +377,10 @@ fun getTrayWindowPositionForInstance(
     horizontalOffset: Int = 0,
     verticalOffset: Int = 0,
 ): WindowPosition {
-    val os = getOperatingSystem()
+    val os = Platform.Current
 
     return when (os) {
-        OperatingSystem.WINDOWS -> {
+        Platform.Windows -> {
             val pos = TrayClickTracker.getLastClickPosition(instanceId)
             if (pos == null) {
                 debugln {
@@ -401,7 +399,7 @@ fun getTrayWindowPositionForInstance(
                 verticalOffset,
             )
         }
-        OperatingSystem.MACOS -> {
+        Platform.MacOS -> {
             val trayHandle = MacTrayInitializer.getNativeTrayHandle(instanceId)
             if (trayHandle != 0L) {
                 val outXY = IntArray(2)
@@ -454,7 +452,7 @@ private fun calculateWindowPositionFromClick(
     horizontalOffset: Int,
     verticalOffset: Int,
 ): WindowPosition {
-    val os = getOperatingSystem()
+    val os = Platform.Current
     val isTop = trayPosition == TrayPosition.TOP_LEFT || trayPosition == TrayPosition.TOP_RIGHT
     val isRight = trayPosition == TrayPosition.TOP_RIGHT || trayPosition == TrayPosition.BOTTOM_RIGHT
 
@@ -465,7 +463,7 @@ private fun calculateWindowPositionFromClick(
             "winW=$windowWidth, winH=$windowHeight, screenBounds=$sb"
     }
 
-    return if (os == OperatingSystem.WINDOWS) {
+    return if (os == Platform.Windows) {
         var x = clickX - (windowWidth / 2)
         var y = if (isTop) clickY else clickY - windowHeight
         debugln { "[TrayPosition] Windows: isTop=$isTop, initial x=$x, y=$y" }
@@ -583,9 +581,9 @@ private fun getWindowsTaskbarHeight(): Int {
  * Gets the appropriate bar size (taskbar/menubar/panel) for the current OS.
  */
 private fun getSystemBarSize(): Int {
-    return when (getOperatingSystem()) {
-        OperatingSystem.WINDOWS -> getWindowsTaskbarHeight()
-        OperatingSystem.MACOS -> 25 // macOS menu bar
+    return when (Platform.Current) {
+        Platform.Windows -> getWindowsTaskbarHeight()
+        Platform.MacOS -> 25 // macOS menu bar
         else -> 28 // Linux panel (GNOME/KDE average)
     }
 }
@@ -594,7 +592,7 @@ internal fun isPointWithinMacStatusItem(
     px: Int,
     py: Int,
 ): Boolean {
-    if (getOperatingSystem() != OperatingSystem.MACOS) return false
+    if (Platform.Current != Platform.MacOS) return false
     val (ix, iy) = getStatusItemXYForMac()
     if (ix == 0 && iy == 0) return false
     val dpi = runCatching { Toolkit.getDefaultToolkit().screenResolution }.getOrDefault(96)
@@ -611,15 +609,15 @@ internal fun isPointWithinLinuxStatusItem(
     px: Int,
     py: Int,
 ): Boolean {
-    if (getOperatingSystem() != OperatingSystem.LINUX) return false
+    if (Platform.Current != Platform.Linux) return false
     val click = TrayClickTracker.getLastClickPosition() ?: loadTrayClickPosition() ?: return false
     val (ix, iy) = click.x to click.y
     val baseIconSizeAt1x =
-        when (detectLinuxDesktopEnvironment()) {
+        when (LinuxDesktopEnvironment.Current) {
             LinuxDesktopEnvironment.KDE -> 22
-            LinuxDesktopEnvironment.GNOME -> 24
-            LinuxDesktopEnvironment.CINNAMON -> 24
-            LinuxDesktopEnvironment.MATE -> 24
+            LinuxDesktopEnvironment.Gnome -> 24
+            LinuxDesktopEnvironment.Cinnamon -> 24
+            LinuxDesktopEnvironment.Mate -> 24
             LinuxDesktopEnvironment.XFCE -> 24
             else -> 24
         }

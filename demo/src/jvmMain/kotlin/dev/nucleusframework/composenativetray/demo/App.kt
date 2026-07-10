@@ -8,7 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import io.github.kdroidfilter.nucleus.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
 import kotlin.system.exitProcess
 
 @OptIn(ExperimentalMaterial3Api::class)

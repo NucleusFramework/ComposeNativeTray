@@ -1,8 +1,7 @@
 package dev.nucleusframework.composenativetray.lib.linux
 
 import dev.nucleusframework.composenativetray.utils.isPointWithinLinuxStatusItem
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.core.runtime.Platform
 import java.awt.Window
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -30,7 +29,7 @@ class LinuxOutsideClickWatcher(
     private var rootWindow: Long = 0L
 
     fun start() {
-        if (getOperatingSystem() != OperatingSystem.LINUX) return
+        if (Platform.Current != Platform.Linux) return
         if (scheduler != null) return
 
         try {

@@ -25,8 +25,8 @@ import dev.nucleusframework.composenativetray.utils.WindowRaise
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
-import io.github.kdroidfilter.nucleus.darkmodedetector.isSystemInDarkMode
-import io.github.kdroidfilter.nucleus.graalvm.GraalVmInitializer
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.graalvm.GraalVmInitializer
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import java.io.File

@@ -1,7 +1,6 @@
 package dev.nucleusframework.composenativetray.lib.windows
 
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.core.runtime.Platform
 import java.awt.Window
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -26,7 +25,7 @@ class WindowsOutsideClickWatcher(
 
     /** Start the global low-level mouse hook on a dedicated daemon thread. */
     fun start() {
-        if (getOperatingSystem() != OperatingSystem.WINDOWS) return
+        if (Platform.Current != Platform.Windows) return
         synchronized(this) {
             if (hookThread != null) return
             stopping.set(false)

@@ -1,12 +1,11 @@
 package dev.nucleusframework.composenativetray.lib.mac
 
 import dev.nucleusframework.composenativetray.utils.debugln
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.core.runtime.Platform
 
 class MacOSWindowManager {
     // Detect platform once
-    private val isMacOs: Boolean = getOperatingSystem() == OperatingSystem.MACOS
+    private val isMacOs: Boolean = Platform.Current == Platform.MacOS
 
     /**
      * Show the application in the Dock

@@ -25,12 +25,12 @@ import dev.nucleusframework.composenativetray.utils.debugln
 import dev.nucleusframework.composenativetray.utils.errorln
 import dev.nucleusframework.composenativetray.utils.extractToTempIfDifferent
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
-import io.github.kdroidfilter.nucleus.darkmodedetector.isSystemInDarkMode
-import io.github.kdroidfilter.platformtools.OperatingSystem.LINUX
-import io.github.kdroidfilter.platformtools.OperatingSystem.MACOS
-import io.github.kdroidfilter.platformtools.OperatingSystem.UNKNOWN
-import io.github.kdroidfilter.platformtools.OperatingSystem.WINDOWS
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.core.runtime.Platform
+import dev.nucleusframework.core.runtime.Platform.Linux
+import dev.nucleusframework.core.runtime.Platform.MacOS
+import dev.nucleusframework.core.runtime.Platform.Unknown
+import dev.nucleusframework.core.runtime.Platform.Windows
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,7 +46,7 @@ internal class NativeTray {
 
     private val awtTrayUsed = AtomicBoolean(false)
 
-    private val os = getOperatingSystem()
+    private val os = Platform.Current
     private val instanceId: String = "tray-" + System.identityHashCode(this)
     private var initialized = false
 
@@ -69,7 +69,7 @@ internal class NativeTray {
 
         try {
             when (os) {
-                LINUX ->
+                Linux ->
                     LinuxTrayInitializer.update(
                         instanceId,
                         iconPath,
@@ -78,7 +78,7 @@ internal class NativeTray {
                         menuContent,
                         onMenuOpened,
                     )
-                WINDOWS ->
+                Windows ->
                     WindowsTrayInitializer.update(
                         instanceId,
                         windowsIconPath,
@@ -87,7 +87,7 @@ internal class NativeTray {
                         menuContent,
                         onMenuOpened,
                     )
-                MACOS ->
+                MacOS ->
                     MacTrayInitializer.update(
                         instanceId,
                         iconPath,
@@ -96,7 +96,7 @@ internal class NativeTray {
                         menuContent,
                         onMenuOpened,
                     )
-                UNKNOWN -> {
+                Unknown -> {
                     AwtTrayInitializer.update(iconPath, tooltip, primaryAction, menuContent)
                     awtTrayUsed.set(true)
                 }
@@ -144,7 +144,7 @@ internal class NativeTray {
             } else {
                 try {
                     when (os) {
-                        LINUX ->
+                        Linux ->
                             LinuxTrayInitializer.update(
                                 instanceId,
                                 pngIconPath,
@@ -153,7 +153,7 @@ internal class NativeTray {
                                 menuContent,
                                 onMenuOpened,
                             )
-                        WINDOWS ->
+                        Windows ->
                             WindowsTrayInitializer.update(
                                 instanceId,
                                 windowsIconPath,
@@ -162,7 +162,7 @@ internal class NativeTray {
                                 menuContent,
                                 onMenuOpened,
                             )
-                        MACOS ->
+                        MacOS ->
                             MacTrayInitializer.update(
                                 instanceId,
                                 pngIconPath,
@@ -171,7 +171,7 @@ internal class NativeTray {
                                 menuContent,
                                 onMenuOpened,
                             )
-                        UNKNOWN -> {
+                        Unknown -> {
                             AwtTrayInitializer.update(pngIconPath, tooltip, primaryAction, menuContent)
                             awtTrayUsed.set(true)
                         }
@@ -183,7 +183,7 @@ internal class NativeTray {
             }
 
             // On macOS, pre-render light/dark variants for instant appearance switching
-            if (os == MACOS && lightIconContent != null && darkIconContent != null) {
+            if (os == MacOS && lightIconContent != null && darkIconContent != null) {
                 try {
                     val lightPath =
                         ComposableIconUtils.renderComposableToPngFile(
@@ -206,7 +206,7 @@ internal class NativeTray {
         lightPath: String,
         darkPath: String,
     ) {
-        if (os == MACOS && initialized) {
+        if (os == MacOS && initialized) {
             MacTrayInitializer.setAppearanceIcons(instanceId, lightPath, darkPath)
         }
     }
@@ -225,7 +225,7 @@ internal class NativeTray {
 
                 // On Windows, also render to ICO; on other OSes reuse PNG path
                 val windowsIconPath =
-                    if (os == WINDOWS) {
+                    if (os == Windows) {
                         ComposableIconUtils.renderComposableToIcoFile(iconRenderProperties, iconContent)
                     } else {
                         pngIconPath
@@ -250,10 +250,10 @@ internal class NativeTray {
 
     fun dispose() {
         when (os) {
-            LINUX -> LinuxTrayInitializer.dispose(instanceId)
-            WINDOWS -> WindowsTrayInitializer.dispose(instanceId)
-            MACOS -> MacTrayInitializer.dispose(instanceId)
-            UNKNOWN -> if (awtTrayUsed.get()) AwtTrayInitializer.dispose()
+            Linux -> LinuxTrayInitializer.dispose(instanceId)
+            Windows -> WindowsTrayInitializer.dispose(instanceId)
+            MacOS -> MacTrayInitializer.dispose(instanceId)
+            Unknown -> if (awtTrayUsed.get()) AwtTrayInitializer.dispose()
             else -> {}
         }
         initialized = false
@@ -277,10 +277,10 @@ internal class NativeTray {
     ) {
         trayScope.launch {
             var trayInitialized = false
-            val os = getOperatingSystem()
+            val os = Platform.Current
             try {
                 when (os) {
-                    LINUX -> {
+                    Linux -> {
                         debugln { "[NativeTray] Initializing Linux tray with icon path: $iconPath" }
                         LinuxTrayInitializer.initialize(
                             instanceId,
@@ -292,7 +292,7 @@ internal class NativeTray {
                         )
                         trayInitialized = true
                     }
-                    WINDOWS -> {
+                    Windows -> {
                         debugln { "[NativeTray] Initializing Windows tray with icon path: $windowsIconPath" }
                         WindowsTrayInitializer.initialize(
                             instanceId,
@@ -304,7 +304,7 @@ internal class NativeTray {
                         )
                         trayInitialized = true
                     }
-                    MACOS -> {
+                    MacOS -> {
                         debugln { "[NativeTray] Initializing macOS tray with icon path: $iconPath" }
                         MacTrayInitializer.initialize(
                             instanceId,
@@ -322,7 +322,7 @@ internal class NativeTray {
                 errorln { "[NativeTray] Error initializing tray: $th" }
             }
 
-            val awtTrayRequired = os == UNKNOWN || !trayInitialized
+            val awtTrayRequired = os == Unknown || !trayInitialized
             if (awtTrayRequired) {
                 if (AwtTrayInitializer.isSupported()) {
                     try {
@@ -462,7 +462,7 @@ fun ApplicationScope.Tray(
 ) {
     val isDark = isMenuBarInDarkMode()
     val isSystemInDarkTheme = isSystemInDarkMode()
-    val isMacOS = getOperatingSystem() == MACOS
+    val isMacOS = Platform.Current == MacOS
 
     // Define the icon content lambda
     val iconContent: @Composable () -> Unit = {
@@ -613,9 +613,9 @@ fun ApplicationScope.Tray(
     onMenuOpened: (() -> Unit)? = null,
     menuContent: (TrayMenuBuilder.() -> Unit)? = null,
 ) {
-    val os = getOperatingSystem()
+    val os = Platform.Current
 
-    if (os == WINDOWS) {
+    if (os == Windows) {
         // Use Painter for Windows
         Tray(
             icon = windowsIcon,
@@ -676,9 +676,9 @@ fun ApplicationScope.Tray(
     onMenuOpened: (() -> Unit)? = null,
     menuContent: (TrayMenuBuilder.() -> Unit)? = null,
 ) {
-    val os = getOperatingSystem()
+    val os = Platform.Current
 
-    if (os == WINDOWS) {
+    if (os == Windows) {
         // Convert DrawableResource to Painter for Windows and delegate
         val painter = painterResource(windowsIcon)
         Tray(

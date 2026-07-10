@@ -2,8 +2,7 @@ package dev.nucleusframework.composenativetray.tray.impl
 
 import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
 import dev.nucleusframework.composenativetray.menu.impl.AwtTrayMenuBuilderImpl
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.core.runtime.Platform
 import java.awt.PopupMenu
 import java.awt.SystemTray
 import java.awt.Toolkit
@@ -54,7 +53,7 @@ object AwtTrayInitializer {
                 // 1. Accept that left-click opens the menu (macOS convention)
                 // 2. Use a more complex native implementation via JNA
 
-                if (getOperatingSystem() == OperatingSystem.MACOS) {
+                if (Platform.Current == Platform.MacOS) {
                     // For macOS, add primary action as the first menu item if both menu and action exist
                     if (onLeftClick != null && menuContent != null) {
                         // The primary action will be added as the first menu item
@@ -79,7 +78,7 @@ object AwtTrayInitializer {
         // Add the menu content if specified
         menuContent?.let {
             // For macOS, prepend the primary action to the menu if it exists
-            if (getOperatingSystem() == OperatingSystem.MACOS && onLeftClick != null) {
+            if (Platform.Current == Platform.MacOS && onLeftClick != null) {
                 val menuBuilder = AwtTrayMenuBuilderImpl(popupMenu, newTrayIcon)
                 menuBuilder.Item("Open", true) { onLeftClick.invoke() }
                 menuBuilder.Divider()

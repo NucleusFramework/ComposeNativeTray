@@ -22,7 +22,7 @@ import dev.nucleusframework.composenativetray.menu.api.Key
 import dev.nucleusframework.composenativetray.menu.api.KeyShortcut
 import dev.nucleusframework.composenativetray.tray.api.Tray
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
-import dev.nucleusframework.composenativetray.utils.SingleInstanceManager
+import dev.nucleusframework.core.runtime.SingleInstanceManager
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
 import composenativetray.demo.generated.resources.Res
