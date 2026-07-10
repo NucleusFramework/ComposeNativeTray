@@ -411,9 +411,11 @@ The single instance manager combined with the primary action (left-click) is par
 - Preserving the current state of the application during restoration
 - Offering behavior similar to native system applications
 
-Implementation example with `SingleInstanceManager`:
+Implementation example with `SingleInstanceManager` (provided by Nucleus):
 
 ```kotlin
+import dev.nucleusframework.core.runtime.SingleInstanceManager
+
 var isWindowVisible by remember { mutableStateOf(true) }
 
 val isSingleInstance = SingleInstanceManager.isSingleInstance(

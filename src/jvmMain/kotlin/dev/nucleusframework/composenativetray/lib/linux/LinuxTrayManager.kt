@@ -4,8 +4,7 @@ import dev.nucleusframework.composenativetray.utils.TrayClickTracker
 import dev.nucleusframework.composenativetray.utils.errorln
 import dev.nucleusframework.composenativetray.utils.infoln
 import dev.nucleusframework.composenativetray.utils.warnln
-import io.github.kdroidfilter.platformtools.LinuxDesktopEnvironment
-import io.github.kdroidfilter.platformtools.detectLinuxDesktopEnvironment
+import dev.nucleusframework.core.runtime.LinuxDesktopEnvironment
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
@@ -54,7 +53,7 @@ internal class LinuxTrayManager(
     private val idByTitle: MutableMap<String, Int> = mutableMapOf()
     private val actionById: MutableMap<Int, () -> Unit> = mutableMapOf()
 
-    private fun isKDEDesktop(): Boolean = detectLinuxDesktopEnvironment() == LinuxDesktopEnvironment.KDE
+    private fun isKDEDesktop(): Boolean = LinuxDesktopEnvironment.Current == LinuxDesktopEnvironment.KDE
 
     // Native handle
     private var trayHandle: Long = 0L

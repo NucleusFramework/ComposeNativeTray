@@ -1,21 +1,19 @@
 [versions]
 kermit = "2.0.8"
-kotlin = "2.3.10"
+kotlin = "2.4.0"
 kotlinx-coroutines = "1.11.0"
-compose = "1.10.3"
-platformtools = "0.7.5"
+compose = "1.11.1"
 detekt = "1.23.8"
 ktlint = "12.1.2"
-nucleus = "1.12.0"
+nucleus = "2.0.0-alpha-202607101252"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
-platformtools-core = { module = "io.github.kdroidfilter:platformtools.core", version.ref = "platformtools" }
-nucleus-core-runtime = { module = "io.github.kdroidfilter:nucleus.core-runtime", version.ref = "nucleus" }
-nucleus-darkmode-detector = { module = "io.github.kdroidfilter:nucleus.darkmode-detector", version.ref = "nucleus" }
-nucleus-graalvm-runtime = { module = "io.github.kdroidfilter:nucleus.graalvm-runtime", version.ref = "nucleus" }
+nucleus-core-runtime = { module = "dev.nucleusframework:nucleus.core-runtime", version.ref = "nucleus" }
+nucleus-darkmode-detector = { module = "dev.nucleusframework:nucleus.darkmode-detector", version.ref = "nucleus" }
+nucleus-graalvm-runtime = { module = "dev.nucleusframework:nucleus.graalvm-runtime", version.ref = "nucleus" }
 
 [plugins]
 multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -25,4 +23,4 @@ vannitktech-maven-publish = { id = "com.vanniktech.maven.publish", version = "0.
 dokka = { id = "org.jetbrains.dokka", version = "2.2.0" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
-nucleus = { id = "io.github.kdroidfilter.nucleus", version.ref = "nucleus" }
+nucleus = { id = "dev.nucleusframework", version.ref = "nucleus" }

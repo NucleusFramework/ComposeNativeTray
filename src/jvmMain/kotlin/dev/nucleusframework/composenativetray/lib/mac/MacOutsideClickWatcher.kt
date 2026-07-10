@@ -1,8 +1,7 @@
 package dev.nucleusframework.composenativetray.lib.mac
 
 import dev.nucleusframework.composenativetray.utils.isPointWithinMacStatusItem
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.core.runtime.Platform
 import java.awt.MouseInfo
 import java.awt.Window
 import java.util.concurrent.Executors
@@ -23,7 +22,7 @@ class MacOutsideClickWatcher(
     private var prevLeft = false
 
     fun start() {
-        if (getOperatingSystem() != OperatingSystem.MACOS) return
+        if (Platform.Current != Platform.MacOS) return
         if (scheduler != null) return
         scheduler =
             Executors.newSingleThreadScheduledExecutor { r ->

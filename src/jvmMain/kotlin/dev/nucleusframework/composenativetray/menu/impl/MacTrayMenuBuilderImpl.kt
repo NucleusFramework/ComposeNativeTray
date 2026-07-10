@@ -13,7 +13,7 @@ import dev.nucleusframework.composenativetray.menu.api.KeyShortcut
 import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
 import dev.nucleusframework.composenativetray.utils.ComposableIconUtils
 import dev.nucleusframework.composenativetray.utils.IconRenderProperties
-import io.github.kdroidfilter.nucleus.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import java.util.concurrent.locks.ReentrantLock

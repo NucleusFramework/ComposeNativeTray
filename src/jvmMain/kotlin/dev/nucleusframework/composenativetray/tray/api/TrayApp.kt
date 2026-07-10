@@ -58,12 +58,8 @@ import dev.nucleusframework.composenativetray.utils.WindowVisibilityMonitor
 import dev.nucleusframework.composenativetray.utils.debugln
 import dev.nucleusframework.composenativetray.utils.getTrayWindowPositionForInstance
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
-import io.github.kdroidfilter.platformtools.LinuxDesktopEnvironment
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.OperatingSystem.MACOS
-import io.github.kdroidfilter.platformtools.OperatingSystem.WINDOWS
-import io.github.kdroidfilter.platformtools.detectLinuxDesktopEnvironment
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.core.runtime.LinuxDesktopEnvironment
+import dev.nucleusframework.core.runtime.Platform
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -80,7 +76,7 @@ import java.util.concurrent.atomic.AtomicLong
 // --------------------- Public API (defaults) ---------------------
 
 private val defaultTrayAppEnterTransition =
-    if (getOperatingSystem() == WINDOWS) {
+    if (Platform.Current == Platform.Windows) {
         slideInVertically(
             initialOffsetY = { fullHeight -> fullHeight },
             animationSpec = tween(250, easing = EaseInOut),
@@ -89,14 +85,14 @@ private val defaultTrayAppEnterTransition =
         fadeIn(
             animationSpec =
                 tween(
-                    if (detectLinuxDesktopEnvironment() == LinuxDesktopEnvironment.KDE) 50 else 200,
+                    if (LinuxDesktopEnvironment.Current == LinuxDesktopEnvironment.KDE) 50 else 200,
                     easing = EaseInOut,
                 ),
         )
     }
 
 private val defaultTrayAppExitTransition =
-    if (getOperatingSystem() == WINDOWS) {
+    if (Platform.Current == Platform.Windows) {
         slideOutVertically(
             targetOffsetY = { fullHeight -> fullHeight },
             animationSpec = tween(250, easing = EaseInOut),
@@ -105,19 +101,19 @@ private val defaultTrayAppExitTransition =
         fadeOut(
             animationSpec =
                 tween(
-                    if (detectLinuxDesktopEnvironment() == LinuxDesktopEnvironment.KDE) 50 else 200,
+                    if (LinuxDesktopEnvironment.Current == LinuxDesktopEnvironment.KDE) 50 else 200,
                     easing = EaseInOut,
                 ),
         )
     }
 
 private val defaultVerticalOffset =
-    when (getOperatingSystem()) {
-        WINDOWS -> -10
-        MACOS -> 5
+    when (Platform.Current) {
+        Platform.Windows -> -10
+        Platform.MacOS -> 5
         else ->
-            when (detectLinuxDesktopEnvironment()) {
-                LinuxDesktopEnvironment.GNOME -> 10
+            when (LinuxDesktopEnvironment.Current) {
+                LinuxDesktopEnvironment.Gnome -> 10
                 else -> 0
             }
     }
@@ -257,7 +253,7 @@ fun ApplicationScope.TrayApp(
     menu: (TrayMenuBuilder.() -> Unit)? = null,
     content: @Composable DialogWindowScope.() -> Unit,
 ) {
-    if (getOperatingSystem() == WINDOWS) {
+    if (Platform.Current == Platform.Windows) {
         TrayApp(
             icon = windowsIcon,
             iconRenderProperties = iconRenderProperties,
@@ -374,7 +370,7 @@ fun ApplicationScope.TrayApp(
     menu: (TrayMenuBuilder.() -> Unit)? = null,
     content: @Composable DialogWindowScope.() -> Unit,
 ) {
-    if (getOperatingSystem() == WINDOWS) {
+    if (Platform.Current == Platform.Windows) {
         TrayApp(
             icon = painterResource(windowsIcon),
             iconRenderProperties = iconRenderProperties,
@@ -447,8 +443,8 @@ fun ApplicationScope.TrayApp(
     menu: (TrayMenuBuilder.() -> Unit)? = null,
     content: @Composable DialogWindowScope.() -> Unit,
 ) {
-    when (getOperatingSystem()) {
-        OperatingSystem.LINUX ->
+    when (Platform.Current) {
+        Platform.Linux ->
             TrayAppImplLinux(
                 iconContent,
                 iconRenderProperties,
@@ -539,7 +535,7 @@ private fun ApplicationScope.TrayAppImplOriginal(
         }
     val windowsIconPath =
         remember(contentHash) {
-            if (getOperatingSystem() == WINDOWS) {
+            if (Platform.Current == Platform.Windows) {
                 ComposableIconUtils.renderComposableToIcoFile(
                     iconRenderProperties,
                     iconContent,
@@ -619,7 +615,7 @@ private fun ApplicationScope.TrayAppImplOriginal(
             lastPrimaryActionAt = now
             if (isVisibleNow) {
                 // On macOS, check if the window is on another Space
-                if (getOperatingSystem() == MACOS) {
+                if (Platform.Current == Platform.MacOS) {
                     val onActiveSpace =
                         runCatching {
                             MacOSWindowManager().isFloatingWindowOnActiveSpace()
@@ -647,7 +643,7 @@ private fun ApplicationScope.TrayAppImplOriginal(
                         "hiddenAgo=${hiddenAgo}ms, focusLostAgo=${focusLostAgo}ms"
                 }
                 if (hiddenAgo >= minHiddenDurationMs) {
-                    if ((getOperatingSystem() == WINDOWS || getOperatingSystem() == MACOS) && focusLostAgo < 150) {
+                    if ((Platform.Current == Platform.Windows || Platform.Current == Platform.MacOS) && focusLostAgo < 150) {
                         // ignore immediate re-show after focus loss on Windows/macOS
                         debugln { "[TrayApp] primaryAction -> SHOW BLOCKED (recent focus loss)" }
                     } else {
@@ -700,7 +696,7 @@ private fun ApplicationScope.TrayAppImplOriginal(
                         val heightPx = currentWindowSize.height.value.toInt()
 
                         // On Windows, force a fresh position capture via the native API
-                        if (getOperatingSystem() == WINDOWS) {
+                        if (Platform.Current == Platform.Windows) {
                             debugln { "[TrayApp] Re-capturing tray position from native API..." }
                             WindowsTrayInitializer.refreshPosition(tray.instanceKey())
                             delay(50) // Let the position update propagate
@@ -724,7 +720,7 @@ private fun ApplicationScope.TrayAppImplOriginal(
                 // Wait for Compose to apply the position before showing the window
                 delay(30)
 
-                if (getOperatingSystem() == WINDOWS) {
+                if (Platform.Current == Platform.Windows) {
                     autoHideEnabledAt = System.currentTimeMillis() + 1000
                 }
                 debugln { "[TrayApp] Now showing window" }
@@ -750,7 +746,7 @@ private fun ApplicationScope.TrayAppImplOriginal(
     }
 
     LaunchedEffect(Unit) {
-        if (getOperatingSystem() == MACOS) {
+        if (Platform.Current == Platform.MacOS) {
             WindowVisibilityMonitor.hasAnyVisibleWindows.collectLatest { hasVisible ->
                 runCatching {
                     val manager = MacOSWindowManager()
@@ -795,7 +791,7 @@ private fun ApplicationScope.TrayAppImplOriginal(
 
             invokeLater {
                 // Move the popup to the current Space before bringing it to front (macOS)
-                if (getOperatingSystem() == MACOS) {
+                if (Platform.Current == Platform.MacOS) {
                     debugln { "[TrayApp] Setting up macOS Space behavior on window..." }
                     val nativeResult = runCatching { MacNativeBridge.nativeSetMoveToActiveSpace() }
                     debugln {
@@ -830,10 +826,10 @@ private fun ApplicationScope.TrayAppImplOriginal(
                                 "dismissMode=$dismissMode, " +
                                 "thread=${Thread.currentThread().name}"
                         }
-                        if (getOperatingSystem() == WINDOWS && now < autoHideEnabledAt) return
+                        if (Platform.Current == Platform.Windows && now < autoHideEnabledAt) return
                         // On macOS, don't auto-hide if the window is not on the active Space.
                         // A Space switch caused the focus loss — let the primary action handle it.
-                        if (getOperatingSystem() == MACOS) {
+                        if (Platform.Current == Platform.MacOS) {
                             val onActiveSpace =
                                 runCatching {
                                     MacOSWindowManager().isFloatingWindowOnActiveSpace()
@@ -846,7 +842,7 @@ private fun ApplicationScope.TrayAppImplOriginal(
                 }
 
             val macWatcher =
-                if (dismissMode == TrayWindowDismissMode.AUTO && getOperatingSystem() == MACOS) {
+                if (dismissMode == TrayWindowDismissMode.AUTO && Platform.Current == Platform.MacOS) {
                     MacOutsideClickWatcher(
                         windowSupplier = { window },
                         onOutsideClick = { invokeLater { requestHideExplicit() } },
@@ -856,7 +852,7 @@ private fun ApplicationScope.TrayAppImplOriginal(
                 }
 
             val linuxWatcher =
-                if (dismissMode == TrayWindowDismissMode.AUTO && getOperatingSystem() == OperatingSystem.LINUX) {
+                if (dismissMode == TrayWindowDismissMode.AUTO && Platform.Current == Platform.Linux) {
                     LinuxOutsideClickWatcher(
                         windowSupplier = { window },
                         onOutsideClick = { invokeLater { requestHideExplicit() } },
@@ -866,7 +862,7 @@ private fun ApplicationScope.TrayAppImplOriginal(
                 }
 
             val windowsWatcher =
-                if (dismissMode == TrayWindowDismissMode.AUTO && getOperatingSystem() == WINDOWS) {
+                if (dismissMode == TrayWindowDismissMode.AUTO && Platform.Current == Platform.Windows) {
                     WindowsOutsideClickWatcher(
                         windowSupplier = { window },
                         onOutsideClick = { invokeLater { requestHideExplicit() } },

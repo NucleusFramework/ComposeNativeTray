@@ -1,8 +1,7 @@
 package dev.nucleusframework.composenativetray.utils
 
 import androidx.compose.ui.unit.Density
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.core.runtime.Platform
 
 /**
  * Properties for rendering a Composable icon.
@@ -42,10 +41,10 @@ data class IconRenderProperties(
             density: Density = Density(2f),
         ): IconRenderProperties {
             val (targetWidth, targetHeight) =
-                when (getOperatingSystem()) {
-                    OperatingSystem.WINDOWS -> 32 to 32
-                    OperatingSystem.MACOS -> 44 to 44
-                    OperatingSystem.LINUX -> 24 to 24
+                when (Platform.Current) {
+                    Platform.Windows -> 32 to 32
+                    Platform.MacOS -> 44 to 44
+                    Platform.Linux -> 24 to 24
                     else -> sceneWidth to sceneHeight
                 }
 
@@ -98,10 +97,10 @@ data class IconRenderProperties(
             density: Density = Density(2f),
         ): IconRenderProperties {
             val (targetWidth, targetHeight) =
-                when (getOperatingSystem()) {
-                    OperatingSystem.WINDOWS -> 16 to 16
-                    OperatingSystem.MACOS -> 16 to 16
-                    OperatingSystem.LINUX -> 16 to 16
+                when (Platform.Current) {
+                    Platform.Windows -> 16 to 16
+                    Platform.MacOS -> 16 to 16
+                    Platform.Linux -> 16 to 16
                     else -> 16 to 16
                 }
 

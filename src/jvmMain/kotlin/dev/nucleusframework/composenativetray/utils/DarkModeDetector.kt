@@ -5,29 +5,24 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import dev.nucleusframework.composenativetray.lib.mac.MacOSMenuBarThemeDetector
-import io.github.kdroidfilter.nucleus.darkmodedetector.isSystemInDarkMode
-import io.github.kdroidfilter.platformtools.LinuxDesktopEnvironment
-import io.github.kdroidfilter.platformtools.OperatingSystem.LINUX
-import io.github.kdroidfilter.platformtools.OperatingSystem.MACOS
-import io.github.kdroidfilter.platformtools.OperatingSystem.WINDOWS
-import io.github.kdroidfilter.platformtools.detectLinuxDesktopEnvironment
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.core.runtime.LinuxDesktopEnvironment
+import dev.nucleusframework.core.runtime.Platform
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
 import java.util.function.Consumer
 
 @Composable
 fun isMenuBarInDarkMode(): Boolean {
-    return when (getOperatingSystem()) {
-        MACOS -> isMacOsMenuBarInDarkMode()
-        WINDOWS -> isSystemInDarkMode()
-        LINUX ->
-            when (detectLinuxDesktopEnvironment()) {
-                LinuxDesktopEnvironment.GNOME -> true
+    return when (Platform.Current) {
+        Platform.MacOS -> isMacOsMenuBarInDarkMode()
+        Platform.Windows -> isSystemInDarkMode()
+        Platform.Linux ->
+            when (LinuxDesktopEnvironment.Current) {
+                LinuxDesktopEnvironment.Gnome -> true
                 LinuxDesktopEnvironment.KDE -> isSystemInDarkMode()
                 LinuxDesktopEnvironment.XFCE -> true
-                LinuxDesktopEnvironment.CINNAMON -> true
-                LinuxDesktopEnvironment.MATE -> true
-                LinuxDesktopEnvironment.UNKNOWN -> true
-                null -> isSystemInDarkMode()
+                LinuxDesktopEnvironment.Cinnamon -> true
+                LinuxDesktopEnvironment.Mate -> true
+                LinuxDesktopEnvironment.Unknown -> true
             }
         else -> true
     }

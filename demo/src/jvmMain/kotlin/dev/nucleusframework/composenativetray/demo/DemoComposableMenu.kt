@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import dev.nucleusframework.composenativetray.tray.api.Tray
-import dev.nucleusframework.composenativetray.utils.SingleInstanceManager
+import dev.nucleusframework.core.runtime.SingleInstanceManager
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import composenativetray.demo.generated.resources.icon2
