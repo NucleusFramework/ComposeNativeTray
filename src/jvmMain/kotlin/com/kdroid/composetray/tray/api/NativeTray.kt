@@ -1,3 +1,5 @@
+@file:Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER")
+
 package com.kdroid.composetray.tray.api
 
 import androidx.compose.foundation.Image
@@ -37,6 +39,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.internal.LowPriorityInOverloadResolution
 
 internal class NativeTray {
     private val trayScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -405,6 +408,7 @@ fun ApplicationScope.Tray(
 }
 
 @Composable
+@LowPriorityInOverloadResolution
 fun ApplicationScope.Tray(
     iconContent: @Composable () -> Unit,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
@@ -446,6 +450,7 @@ fun ApplicationScope.Tray(
 }
 
 @Composable
+@LowPriorityInOverloadResolution
 fun ApplicationScope.Tray(
     icon: ImageVector,
     tint: Color? = null,
@@ -541,6 +546,7 @@ fun ApplicationScope.Tray(
 }
 
 @Composable
+@LowPriorityInOverloadResolution
 fun ApplicationScope.Tray(
     icon: Painter,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
@@ -596,6 +602,7 @@ fun ApplicationScope.Tray(
  * Platform-polymorphic helper
  */
 @Composable
+@LowPriorityInOverloadResolution
 fun ApplicationScope.Tray(
     windowsIcon: Painter,
     macLinuxIcon: ImageVector,
@@ -636,6 +643,7 @@ fun ApplicationScope.Tray(
  * DrawableResource helpers
  */
 @Composable
+@LowPriorityInOverloadResolution
 fun ApplicationScope.Tray(
     icon: DrawableResource,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
@@ -657,6 +665,7 @@ fun ApplicationScope.Tray(
 }
 
 @Composable
+@LowPriorityInOverloadResolution
 fun ApplicationScope.Tray(
     windowsIcon: DrawableResource,
     macLinuxIcon: ImageVector,
