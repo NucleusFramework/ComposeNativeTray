@@ -1,13 +1,17 @@
 package dev.nucleusframework.composenativetray.demo
 
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.Tray
-import dev.nucleusframework.core.runtime.SingleInstanceManager
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.TitleBar
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import composenativetray.demo.generated.resources.icon2
@@ -15,19 +19,11 @@ import org.jetbrains.compose.resources.painterResource
 
 /**
  * Showcases the @Composable menu DSL. No need to hoist `painterResource(...)` above
- * `application { … }` — every menu/submenu lambda is composable.
+ * `nucleusApplication { … }` — every menu/submenu lambda is composable.
  */
-fun main() = application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     var isWindowVisible by remember { mutableStateOf(true) }
     var enableHeavyMode by remember { mutableStateOf(false) }
-
-    val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-        isWindowVisible = true
-    })
-    if (!isSingleInstance) {
-        exitApplication()
-        return@application
-    }
 
     Tray(
         icon = painterResource(Res.drawable.icon),
@@ -68,12 +64,20 @@ fun main() = application {
         },
     )
 
-    Window(
-        onCloseRequest = { isWindowVisible = false },
-        title = "Composable Menu Demo",
-        visible = isWindowVisible,
-        icon = painterResource(Res.drawable.icon),
-    ) {
-        window.toFront()
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        DecoratedWindow(
+            onCloseRequest = { isWindowVisible = false },
+            title = "Composable Menu Demo",
+            visible = isWindowVisible,
+            icon = painterResource(Res.drawable.icon),
+        ) {
+            TitleBar { Text("Composable Menu Demo") }
+            val window = nucleusWindow
+            LaunchedEffect(isWindowVisible) {
+                if (isWindowVisible) {
+                    window.toFront()
+                }
+            }
+        }
     }
 }

@@ -2,14 +2,18 @@ package dev.nucleusframework.composenativetray.demo
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.Tray
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.TitleBar
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import org.jetbrains.compose.resources.painterResource
@@ -22,7 +26,7 @@ import org.jetbrains.compose.resources.painterResource
  * This validates end-to-end UTF-8 → UTF-16 handling on Windows and generic
  * Unicode rendering across platforms.
  */
-fun main() = application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     val painter = painterResource(Res.drawable.icon)
 
     var lastClicked by remember { mutableStateOf("-") }
@@ -102,5 +106,9 @@ fun main() = application {
         Item(label = "Dernier: $lastClicked", isEnabled = false)
     }
 
-    Window(onCloseRequest = ::exitApplication, title = "Unicode Tray Demo") { }
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        DecoratedWindow(onCloseRequest = ::exitApplication, title = "Unicode Tray Demo") {
+            TitleBar { Text("Unicode Tray Demo") }
+        }
+    }
 }

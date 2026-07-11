@@ -47,18 +47,19 @@ class MacOSWindowManager {
     }
 
     /**
-     * Configure an AWT window so that macOS moves it to the active Space
-     * when it is ordered front, instead of switching back to the Space
-     * where the window was originally created.
+     * Configure a window so that macOS moves it to the active Space when it
+     * is ordered front, instead of switching back to the Space where the
+     * window was originally created.
+     *
+     * @param nsViewPtr NSView pointer of the window's content view (on the
+     * Tao backend this is `TaoWindow.nativeHandle`).
      */
-    fun setMoveToActiveSpace(awtWindow: java.awt.Window): Boolean {
+    fun setMoveToActiveSpace(nsViewPtr: Long): Boolean {
         if (!isMacOs) return false
         return try {
-            // Try direct approach via JAWT to get NSView pointer
-            val viewPtr = MacNativeBridge.nativeGetAWTViewPtr(awtWindow)
-            debugln { "[MacOSWindowManager] setMoveToActiveSpace: viewPtr=$viewPtr" }
-            if (viewPtr != 0L) {
-                val result = MacNativeBridge.nativeSetMoveToActiveSpaceForWindow(viewPtr)
+            debugln { "[MacOSWindowManager] setMoveToActiveSpace: viewPtr=$nsViewPtr" }
+            if (nsViewPtr != 0L) {
+                val result = MacNativeBridge.nativeSetMoveToActiveSpaceForWindow(nsViewPtr)
                 if (result == 0) return true
             }
 
@@ -87,16 +88,17 @@ class MacOSWindowManager {
     }
 
     /**
-     * Check if an AWT window is currently on the active macOS Space.
+     * Check if a window is currently on the active macOS Space.
      * Returns true if on the active Space, false if on another Space.
      * Returns true by default if the check cannot be performed (fail-open).
+     *
+     * @param nsViewPtr NSView pointer of the window's content view.
      */
-    fun isOnActiveSpace(awtWindow: java.awt.Window): Boolean {
+    fun isOnActiveSpace(nsViewPtr: Long): Boolean {
         if (!isMacOs) return true
         return try {
-            val viewPtr = MacNativeBridge.nativeGetAWTViewPtr(awtWindow)
-            if (viewPtr == 0L) return true
-            MacNativeBridge.nativeIsOnActiveSpaceForView(viewPtr) != 0
+            if (nsViewPtr == 0L) return true
+            MacNativeBridge.nativeIsOnActiveSpaceForView(nsViewPtr) != 0
         } catch (e: Throwable) {
             debugln { "Failed to check isOnActiveSpace: ${e.message}" }
             true // fail-open: assume on active Space

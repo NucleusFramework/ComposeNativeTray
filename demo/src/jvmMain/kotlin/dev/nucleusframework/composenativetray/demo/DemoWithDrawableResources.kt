@@ -1,16 +1,20 @@
 package dev.nucleusframework.composenativetray.demo
 
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.Tray
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
-import dev.nucleusframework.core.runtime.SingleInstanceManager
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.TitleBar
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import composenativetray.demo.generated.resources.icon2
@@ -20,7 +24,7 @@ import composenativetray.demo.generated.resources.icon2
  * and for context menu icons, e.g.:
  *   Tray(icon = Res.drawable.icon) { Item(label = "Settings", icon = Res.drawable.icon2) }
  */
-fun main() = application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     allowComposeNativeTrayLogging = true
     composeNativeTrayLoggingLevel = ComposeNativeTrayLoggingLevel.DEBUG
 
@@ -29,15 +33,6 @@ fun main() = application {
     var isWindowVisible by remember { mutableStateOf(true) }
     var alwaysShowTray by remember { mutableStateOf(true) }
     var hideOnClose by remember { mutableStateOf(true) }
-
-    val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-        isWindowVisible = true
-    })
-
-    if (!isSingleInstance) {
-        exitApplication()
-        return@application
-    }
 
     val showTray = alwaysShowTray || !isWindowVisible
 
@@ -95,26 +90,34 @@ fun main() = application {
         }
     }
 
-    Window(
-        onCloseRequest = {
-            if (hideOnClose) {
-                isWindowVisible = false
-            } else {
-                exitApplication()
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        DecoratedWindow(
+            onCloseRequest = {
+                if (hideOnClose) {
+                    isWindowVisible = false
+                } else {
+                    exitApplication()
+                }
+            },
+            title = "Demo with DrawableResource icons",
+            visible = isWindowVisible,
+            // Note: Window icon can still use painterResource if desired; omitted here for simplicity
+        ) {
+            TitleBar { Text("Demo with DrawableResource icons") }
+            val window = nucleusWindow
+            LaunchedEffect(isWindowVisible) {
+                if (isWindowVisible) {
+                    window.toFront()
+                }
             }
-        },
-        title = "Demo with DrawableResource icons",
-        visible = isWindowVisible,
-        // Note: Window icon can still use painterResource if desired; omitted here for simplicity
-    ) {
-        window.toFront()
-        App(
-            textVisible = true,
-            alwaysShowTray = alwaysShowTray,
-            hideOnClose = hideOnClose
-        ) { alwaysShow, hideOnCloseState ->
-            alwaysShowTray = alwaysShow
-            hideOnClose = hideOnCloseState
+            App(
+                textVisible = true,
+                alwaysShowTray = alwaysShowTray,
+                hideOnClose = hideOnClose
+            ) { alwaysShow, hideOnCloseState ->
+                alwaysShowTray = alwaysShow
+                hideOnClose = hideOnCloseState
+            }
         }
     }
 }

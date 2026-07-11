@@ -13,20 +13,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.Tray
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
-import dev.nucleusframework.core.runtime.SingleInstanceManager
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
 import dev.nucleusframework.composenativetray.utils.getTrayPosition
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import org.jetbrains.compose.resources.painterResource
 
-fun main() = application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     allowComposeNativeTrayLogging = true
     composeNativeTrayLoggingLevel = ComposeNativeTrayLoggingLevel.DEBUG
 
@@ -48,15 +49,6 @@ fun main() = application {
     var notificationsEnabled by remember { mutableStateOf(false) }
     var darkModeEnabled by remember { mutableStateOf(false) }
     var autoStartEnabled by remember { mutableStateOf(true) }
-
-    val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-        isWindowVisible = true
-    })
-
-    if (!isSingleInstance) {
-        exitApplication()
-        return@application
-    }
 
     // Always create the Tray composable, but make it conditional on visibility
     val showTray = alwaysShowTray || !isWindowVisible
@@ -208,23 +200,26 @@ fun main() = application {
         }
     }
 
-    Window(
-        transparent = true,
-        undecorated = true,
-        onCloseRequest = {
-            if (hideOnClose) {
-                isWindowVisible = false
-            } else {
-                exitApplication()
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        // Note: per-pixel transparency is not supported on the Tao backend,
+        // so the window is only undecorated here.
+        DecoratedWindow(
+            undecorated = true,
+            onCloseRequest = {
+                if (hideOnClose) {
+                    isWindowVisible = false
+                } else {
+                    exitApplication()
+                }
+            },
+            title = "Compose Desktop Application with Dynamic Tray Menu",
+            visible = isWindowVisible,
+            icon = org.jetbrains.compose.resources.painterResource(Res.drawable.icon)
+        ) {
+            App(textVisible, alwaysShowTray, hideOnClose) { alwaysShow, hideOnCloseState ->
+                alwaysShowTray = alwaysShow
+                hideOnClose = hideOnCloseState
             }
-        },
-        title = "Compose Desktop Application with Dynamic Tray Menu",
-        visible = isWindowVisible,
-        icon = org.jetbrains.compose.resources.painterResource(Res.drawable.icon)
-    ) {
-        App(textVisible, alwaysShowTray, hideOnClose) { alwaysShow, hideOnCloseState ->
-            alwaysShowTray = alwaysShow
-            hideOnClose = hideOnCloseState
         }
     }
 }

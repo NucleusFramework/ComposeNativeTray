@@ -1,6 +1,7 @@
 package dev.nucleusframework.composenativetray.lib.windows
 
 import dev.nucleusframework.composenativetray.utils.TrayClickTracker
+import dev.nucleusframework.composenativetray.utils.TrayScreenGeometry
 import dev.nucleusframework.composenativetray.utils.convertPositionToCorner
 import dev.nucleusframework.composenativetray.utils.debugln
 import kotlinx.coroutines.CoroutineScope
@@ -253,21 +254,21 @@ internal class WindowsTrayManager(
             val precise = WindowsNativeBridge.nativeGetNotificationIconsPosition(outXY) != 0
             log("nativeGetNotificationIconsPosition: precise=$precise, rawX=${outXY[0]}, rawY=${outXY[1]}")
             if (precise) {
-                // Native coordinates are in physical pixels, but AWT uses logical pixels.
-                // Convert physical to logical by dividing by the DPI scale factor.
-                val scale = getDpiScale(outXY[0], outXY[1])
+                // Native coordinates are in physical pixels; window positioning
+                // works in logical pixels. Convert via the primary monitor scale.
+                val scale = TrayScreenGeometry.scale()
                 val logicalX = (outXY[0] / scale).toInt()
                 val logicalY = (outXY[1] / scale).toInt()
 
-                val screen = java.awt.Toolkit.getDefaultToolkit().screenSize
+                val screen = TrayScreenGeometry.workAreaLogical()
                 log(
                     "DPI scale=$scale, logicalX=$logicalX, logicalY=$logicalY, " +
                         "screenW=${screen.width}, screenH=${screen.height}",
                 )
                 val corner =
                     convertPositionToCorner(
-                        logicalX,
-                        logicalY,
+                        logicalX - screen.x,
+                        logicalY - screen.y,
                         screen.width,
                         screen.height,
                     )
@@ -295,52 +296,6 @@ internal class WindowsTrayManager(
     fun refreshPosition() {
         log("Refreshing tray position...")
         safeGetTrayPosition(instanceId)
-    }
-
-    /**
-     * Gets the DPI scale factor for the screen containing the given physical coordinates.
-     * Returns 1.0 for 100% scaling, 1.25 for 125%, 1.5 for 150%, etc.
-     *
-     * @param physicalX X coordinate in physical pixels (optional, uses primary screen if not provided)
-     * @param physicalY Y coordinate in physical pixels (optional, uses primary screen if not provided)
-     */
-    private fun getDpiScale(
-        physicalX: Int? = null,
-        physicalY: Int? = null,
-    ): Double {
-        return try {
-            val ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
-
-            // If coordinates provided, try to find the screen containing those coordinates
-            if (physicalX != null && physicalY != null) {
-                for (gd in ge.screenDevices) {
-                    val config = gd.defaultConfiguration
-                    val scale = config.defaultTransform.scaleX
-                    // Convert physical bounds to check containment
-                    val bounds = config.bounds
-                    val physBounds =
-                        java.awt.Rectangle(
-                            (bounds.x * scale).toInt(),
-                            (bounds.y * scale).toInt(),
-                            (bounds.width * scale).toInt(),
-                            (bounds.height * scale).toInt(),
-                        )
-                    if (physBounds.contains(physicalX, physicalY)) {
-                        return scale
-                    }
-                }
-            }
-
-            // Fallback to primary screen
-            ge.defaultScreenDevice.defaultConfiguration.defaultTransform.scaleX
-        } catch (_: Throwable) {
-            // Fallback: use screen resolution (96 DPI = 100%)
-            try {
-                java.awt.Toolkit.getDefaultToolkit().screenResolution / 96.0
-            } catch (_: Throwable) {
-                1.0
-            }
-        }
     }
 
     private fun processUpdateQueue() {
