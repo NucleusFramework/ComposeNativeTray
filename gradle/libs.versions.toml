@@ -5,8 +5,8 @@ kotlinx-coroutines = "1.11.0"
 compose = "1.11.1"
 detekt = "1.23.8"
 ktlint = "12.1.2"
-nucleus = "2.0.0-alpha-202607120312"
-nucleus-plugin = "2.0.0-alpha-202607120312"
+nucleus = "2.0.0-alpha-202607120617"
+nucleus-plugin = "2.0.0-alpha-202607120617"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }

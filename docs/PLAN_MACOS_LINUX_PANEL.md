@@ -92,24 +92,76 @@ really contains the fresh dylib, md5 vs `src/main/resources/nucleus/native/…`)
 → recompile ComposeNativeTray → hand off. Never compile while a demo JVM
 is running.
 
-## Linux (decide, then maybe implement)
+## Linux (option B chosen — raw X11/XWayland panel, IMPLEMENTED)
 
-Transparency requires a compositing WM + ARGB visual; there is no DComp/
-CAMetalLayer equivalent that works everywhere (X11 vs Wayland, GNOME vs
-KDE vs bare WMs). Options:
+Status 2026-07-12: macOS is DONE (Nucleus PR #302, `TaoStandalonePopupHostMac`
++ `popup_panel.m`; TrayApp already routes macOS to `TrayAppImplPanel`).
+Nucleus repo moved to `~/IdeaProjects/Nucleus`. Linux option B implemented on
+Nucleus branch `feat/standalone-popup-panel-linux` (commit 1f037863): native
+module + host + routing + smoke test (passes on GNOME Wayland via XWayland)
++ GraalVM metadata + CI. Published locally as `2.0.0-tao-local`;
+ComposeNativeTray routes Linux → `TrayAppImplPanel` gated on
+`isTaoStandalonePopupAvailable()`. AWAITING: user demo validation on
+GNOME Wayland (topmost stacking above Wayland windows, position vs tray
+click coords, keyboard into text fields, outside-click dismissal), then
+Nucleus PR + published alpha + drop the mavenLocal pin.
 
-- **A (pragmatic, recommended default)**: keep the opaque
-  `TrayAppImplWindow`. Accept animations over the window background, or
-  set Linux defaults back to `None` (one-line change in the
-  `defaultTrayApp*Transition` vals).
-- **B (best-effort)**: GTK layer — an undecorated, override-redirect
-  GTK window with RGBA visual when a compositor is present
-  (`gdk_screen_is_composited`), falling back to A otherwise. Sizeable
-  native work; only worth it if users ask.
+### Decision: raw X11 window, NOT a GTK window
 
-Outside-click on Wayland cannot use global pointer grabs from a regular
-client — focus-loss dismissal (current behavior) is the only reliable
-signal. Keep it.
+GDK's backend is process-wide (native Wayland on Wayland sessions), so a
+GTK popup window would only work by forcing the whole app onto XWayland
+(`NUCLEUS_TAO_LINUX_RENDERER=x11`). Instead the panel is a **raw X11
+override-redirect ARGB32 window on its own `XOpenDisplay` connection** —
+an independent X client that works even while the app itself is a native
+Wayland client, via XWayland (present on effectively all desktops).
+Feasibility was validated on GNOME Wayland (Ubuntu, Mutter): OR window
+maps and moves at exact global coords, ARGB visual + desktop-GL 3.3 EGL
+context all work through XWayland.
+
+Native Wayland (no XWayland/DISPLAY) stays unsupported: no layer-shell in
+vendored Tao, `gtk_window_move` is a no-op on xdg-toplevels, `keep_above`
+ignored. In that case the panel reports unavailable and TrayApp falls back
+to the opaque `TrayAppImplWindow`.
+
+### Architecture (mirrors Windows, reuses the Linux EGL bridge)
+
+- **Visual selection**: query EGL first (alpha=8 desktop-GL configs →
+  `EGL_NATIVE_VISUAL_ID`), create the window with exactly that visual —
+  guarantees `NativeTaoEglBridge.nativeAttachX11` matches directly (no
+  child-window fallback, alpha preserved).
+- **Rendering**: reuse `nucleus_tao_egl.c` per-attachment API
+  (`nativeAttachX11`/`nativeMakeCurrent`/`nativePresent`/`nativeResize` +
+  `nativeGetProcAddrFunctionPointer`) — Linux convention is one EGL context
+  per surface, no headless bootstrap needed. `eglSwapInterval(0)` +
+  the 60 fps pacer pattern from the Windows host (don't block the Tao
+  main thread on vsync).
+- **Threading**: two X connections. Command connection owned by the Tao
+  main thread (create/move/map/cursor/focus + EGL). Event connection owned
+  by a dedicated per-panel thread (`XSelectInput` on the panel XID works
+  cross-connection); quit via ClientMessage. No `XInitThreads` dependency.
+- **Input**: Button/Motion/scroll(buttons 4-7) → `TaoNativeWireFormat`
+  pointer wire; keys send the raw **X keysym** as vkCode + Unicode
+  codePoint; a new `linuxNativeKeyToAwt` in `dispatchNativeKeyEvent`
+  translates keysym → AWT VK (same pattern as `macNativeKeyToAwt`).
+- **Keyboard focus**: `XSetInputFocus(RevertToParent)` on click while
+  focusable (Windows `takeKeyboardFocus` equivalent). If some WMs don't
+  deliver keys to OR windows, escalate to `XGrabKeyboard` later.
+- **Outside-click**: XI2 raw ButtonPress on the root window (the X11
+  analog of `WH_MOUSE_LL`; multiple clients allowed, no grab, doesn't
+  consume). Fully global on X11 sessions; under XWayland only fires while
+  X11 surfaces have input — acceptable because the tray-icon toggle and
+  focus-loss cover the rest.
+- **Scale**: `Xft.dpi`-derived (X clients live in the X coordinate space,
+  which under XWayland is logical — GDK's Wayland scale would mis-size the
+  panel). Fractional/HiDPI XWayland caveats accepted for v1.
+
+New files: `nucleus_tao_linux_popup.c` (→ `libnucleus_tao_linux_popup.so`,
+dlopen libX11/libXi only, linked `-ldl` like siblings),
+`PopupNativeBridgeLinux.kt`, `render/TaoStandalonePopupHostLinux.kt`,
+`render/TaoKeyLinux.kt`, smoke test guarded on Linux + `DISPLAY`. Plus:
+route Linux in `TaoStandalonePopup.kt`, a public availability check for
+TrayApp's router, `linux/build.sh` step, GraalVM reachability metadata,
+CI `build-natives.yaml` + verify arrays in consumer workflows.
 
 ## Also pending (unrelated to the port)
 

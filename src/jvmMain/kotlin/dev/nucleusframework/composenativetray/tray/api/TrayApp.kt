@@ -57,6 +57,7 @@ import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
 import dev.nucleusframework.core.runtime.LinuxDesktopEnvironment
 import dev.nucleusframework.core.runtime.Platform
 import dev.nucleusframework.window.tao.TaoStandalonePopup
+import dev.nucleusframework.window.tao.isTaoStandalonePopupAvailable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -451,7 +452,16 @@ fun NucleusApplicationScope.TrayApp(
             "nucleus.decorated-window-tao module."
     }
 
-    if (Platform.Current == Platform.Windows || Platform.Current == Platform.MacOS) {
+    // Linux gates on runtime availability: the panel is a raw X11 window,
+    // reachable through XWayland on Wayland sessions but absent on rare
+    // Wayland-only setups — those fall back to the opaque window impl.
+    val panelAvailable =
+        remember {
+            Platform.Current == Platform.Windows ||
+                Platform.Current == Platform.MacOS ||
+                (Platform.Current == Platform.Linux && isTaoStandalonePopupAvailable())
+        }
+    if (panelAvailable) {
         TrayAppImplPanel(
             iconContent, iconRenderProperties, tooltip, state, windowSize, visibleOnStart,
             enterTransition, exitTransition,
