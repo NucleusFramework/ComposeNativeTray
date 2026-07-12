@@ -92,19 +92,16 @@ really contains the fresh dylib, md5 vs `src/main/resources/nucleus/native/…`)
 → recompile ComposeNativeTray → hand off. Never compile while a demo JVM
 is running.
 
-## Linux (option B chosen — raw X11/XWayland panel, IMPLEMENTED)
+## Linux (option B — raw X11/XWayland panel, DONE)
 
-Status 2026-07-12: macOS is DONE (Nucleus PR #302, `TaoStandalonePopupHostMac`
-+ `popup_panel.m`; TrayApp already routes macOS to `TrayAppImplPanel`).
-Nucleus repo moved to `~/IdeaProjects/Nucleus`. Linux option B implemented on
-Nucleus branch `feat/standalone-popup-panel-linux` (commit 1f037863): native
-module + host + routing + smoke test (passes on GNOME Wayland via XWayland)
-+ GraalVM metadata + CI. Published locally as `2.0.0-tao-local`;
-ComposeNativeTray routes Linux → `TrayAppImplPanel` gated on
-`isTaoStandalonePopupAvailable()`. AWAITING: user demo validation on
-GNOME Wayland (topmost stacking above Wayland windows, position vs tray
-click coords, keyboard into text fields, outside-click dismissal), then
-Nucleus PR + published alpha + drop the mavenLocal pin.
+Status 2026-07-12: all three platforms are DONE. macOS: Nucleus PR #302.
+Linux: Nucleus PR #305 (merged, `nucleus-2.0`), published as
+`2.0.0-alpha-202607120617` (runtime + plugin), user-validated end-to-end
+on GNOME Wayland. ComposeNativeTray routes Linux → `TrayAppImplPanel`
+gated on `isTaoStandalonePopupAvailable()` (opaque-window fallback for
+X-server-less setups). Position comes from the SNI click coords; the
+work area is answered X11-side (XRandR ∩ `_NET_WORKAREA`) since a
+panel-only app has no realized Tao window for the GDK path.
 
 ### Decision: raw X11 window, NOT a GTK window
 
