@@ -51,6 +51,7 @@ import dev.nucleusframework.composenativetray.utils.MenuContentHash
 import dev.nucleusframework.composenativetray.utils.PersistentAnimatedVisibility
 import dev.nucleusframework.composenativetray.utils.TrayScreenGeometry
 import dev.nucleusframework.composenativetray.utils.debugln
+import dev.nucleusframework.composenativetray.utils.getTrayWindowPosition
 import dev.nucleusframework.composenativetray.utils.getTrayWindowPositionForInstance
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
 import dev.nucleusframework.core.runtime.LinuxDesktopEnvironment
@@ -67,22 +68,46 @@ import java.util.concurrent.atomic.AtomicLong
 
 // --------------------- Public API (defaults) ---------------------
 
-// On Windows the popup renders in a per-pixel transparent native panel, so
-// content animations composite over the desktop. On macOS/Linux the popup is
-// still an opaque Tao window: the animation runs over the bare window
-// background until the standalone panel is ported there (see
-// docs/PLAN_MACOS_LINUX_PANEL.md).
+// On Windows + macOS the popup renders in a per-pixel transparent native panel,
+// so content animations composite over the desktop. On Linux the popup is
+// still an opaque Tao window (no cross-WM transparency equivalent): the
+// animation runs over the bare window background. See
+// docs/PLAN_MACOS_LINUX_PANEL.md.
+//
+// Defaults match the historical per-platform behaviour: Windows tray popups
+// slide up from the taskbar; macOS/Linux use a plain fade (menu-bar popups
+// don't slide on those platforms; KDE gets a near-instant fade).
 private val defaultTrayAppEnterTransition =
-    slideInVertically(
-        initialOffsetY = { fullHeight -> fullHeight },
-        animationSpec = tween(250, easing = EaseInOut),
-    ) + fadeIn(animationSpec = tween(200, easing = EaseInOut))
+    if (Platform.Current == Platform.Windows) {
+        slideInVertically(
+            initialOffsetY = { fullHeight -> fullHeight },
+            animationSpec = tween(250, easing = EaseInOut),
+        ) + fadeIn(animationSpec = tween(200, easing = EaseInOut))
+    } else {
+        fadeIn(
+            animationSpec =
+                tween(
+                    if (LinuxDesktopEnvironment.Current == LinuxDesktopEnvironment.KDE) 50 else 200,
+                    easing = EaseInOut,
+                ),
+        )
+    }
 
 private val defaultTrayAppExitTransition =
-    slideOutVertically(
-        targetOffsetY = { fullHeight -> fullHeight },
-        animationSpec = tween(250, easing = EaseInOut),
-    ) + fadeOut(animationSpec = tween(200, easing = EaseInOut))
+    if (Platform.Current == Platform.Windows) {
+        slideOutVertically(
+            targetOffsetY = { fullHeight -> fullHeight },
+            animationSpec = tween(250, easing = EaseInOut),
+        ) + fadeOut(animationSpec = tween(200, easing = EaseInOut))
+    } else {
+        fadeOut(
+            animationSpec =
+                tween(
+                    if (LinuxDesktopEnvironment.Current == LinuxDesktopEnvironment.KDE) 50 else 200,
+                    easing = EaseInOut,
+                ),
+        )
+    }
 
 private val defaultVerticalOffset =
     when (Platform.Current) {
@@ -392,11 +417,11 @@ fun NucleusApplicationScope.TrayApp(
  * call it inside `nucleusApplication(backend = NucleusBackend.Tao)` (or
  * `Auto` with `decorated-window-tao` on the classpath).
  *
- * On Windows the popup body is hosted in a standalone per-pixel transparent,
- * non-activating native panel — no backing window exists anywhere (nothing in
- * the taskbar, Alt-Tab or the Start task view). On macOS/Linux the popup is a
- * regular undecorated Tao window (opaque) until their standalone panel
- * equivalents land.
+ * On Windows + macOS the popup body is hosted in a standalone per-pixel
+ * transparent, non-activating native panel — no backing window exists anywhere
+ * (nothing in the taskbar/Dock, Alt-Tab or the Start task view). On Linux the
+ * popup is a regular undecorated Tao window (opaque): no cross-WM transparency
+ * equivalent exists.
  */
 @ExperimentalTrayAppApi
 @Composable
@@ -426,7 +451,7 @@ fun NucleusApplicationScope.TrayApp(
             "nucleus.decorated-window-tao module."
     }
 
-    if (Platform.Current == Platform.Windows) {
+    if (Platform.Current == Platform.Windows || Platform.Current == Platform.MacOS) {
         TrayAppImplPanel(
             iconContent, iconRenderProperties, tooltip, state, windowSize, visibleOnStart,
             enterTransition, exitTransition,
@@ -441,7 +466,7 @@ fun NucleusApplicationScope.TrayApp(
     }
 }
 
-// --------------------- Impl: standalone transparent panel (Windows) ---------------------
+// --------------------- Impl: standalone transparent panel (Windows + macOS) ---------------------
 
 @Suppress("CyclomaticComplexMethod", "LongMethod")
 @Composable
@@ -579,18 +604,21 @@ private fun TrayAppImplPanel(
                         preComputed
                     } else {
                         // Fallback: poll for position (e.g. visibleOnStart or programmatic show).
-                        // Windows moves tray icons around after creation, so wait and re-poll.
                         debugln { "[TrayApp] No preComputed position, waiting for tray to stabilize..." }
-                        delay(400)
-
                         val widthPx = currentWindowSize.width.value.toInt()
                         val heightPx = currentWindowSize.height.value.toInt()
 
-                        debugln { "[TrayApp] Re-capturing tray position from native API..." }
-                        WindowsTrayInitializer.refreshPosition(instanceKey)
-                        delay(50)
-
                         var pos: WindowPosition = WindowPosition.PlatformDefault
+                        if (Platform.Current == Platform.Windows) {
+                            // Windows moves tray icons around after creation, so wait for the
+                            // shell to settle, refresh the cached icon rect, then re-poll.
+                            delay(400)
+                            debugln { "[TrayApp] Re-capturing tray position from native API..." }
+                            WindowsTrayInitializer.refreshPosition(instanceKey)
+                            delay(50)
+                        }
+                        // macOS positions precisely up front (status item rect), so it skips
+                        // the stabilization wait and resolves on the first poll below.
                         val deadline = System.currentTimeMillis() + 3000
                         while (pos is WindowPosition.PlatformDefault && System.currentTimeMillis() < deadline) {
                             pos =
@@ -599,6 +627,12 @@ private fun TrayAppImplPanel(
                                 )
                             debugln { "[TrayApp] Polled position: $pos" }
                             if (pos is WindowPosition.PlatformDefault) delay(250)
+                        }
+                        if (pos is WindowPosition.PlatformDefault) {
+                            // Tray never became ready within the deadline — fall back
+                            // to the corner heuristic rather than showing at (0,0).
+                            pos = getTrayWindowPosition(widthPx, heightPx, horizontalOffset, verticalOffset)
+                            debugln { "[TrayApp] Poll deadline expired, corner fallback: $pos" }
                         }
                         pos
                     }

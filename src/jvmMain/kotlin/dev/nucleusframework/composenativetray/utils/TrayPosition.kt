@@ -398,8 +398,13 @@ fun getTrayWindowPositionForInstance(
                     )
                 }
             }
-            // Fallback global
-            getTrayWindowPosition(windowWidth, windowHeight, horizontalOffset, verticalOffset)
+            // Tray not registered / status item not realised yet (initialisation
+            // is async: icon rendering + IO dispatch). Report PlatformDefault so
+            // callers with a poll loop (visibleOnStart path in TrayAppImplPanel)
+            // retry until the precise status-item rect is available, instead of
+            // latching a screen-corner fallback position.
+            debugln { "[TrayPosition] mac instance $instanceId not ready (handle=$trayHandle), PlatformDefault" }
+            WindowPosition.PlatformDefault
         }
         else -> getTrayWindowPosition(windowWidth, windowHeight, horizontalOffset, verticalOffset)
     }
@@ -450,10 +455,13 @@ private fun calculateWindowPositionFromClick(
         debugln { "[TrayPosition] Windows: final x=$x, y=$y" }
         WindowPosition(x = x.dp, y = y.dp)
     } else {
-        val panelGuessPx = 28
-
+        // `sb` is the WORK AREA (Tao bridges): its top edge already sits below
+        // the macOS menu bar / Linux top panel, and its bottom edge above the
+        // dock/panel — anchor directly at the edge. (The pre-Tao AWT code used
+        // full-screen bounds and approximated the bar with a 28px guess; keeping
+        // that guess on top of the work area double-counts the bar.)
         var x = clickX - (windowWidth / 2)
-        val anchorY = if (isTop) sb.y + panelGuessPx else (sb.y + sb.height - panelGuessPx)
+        val anchorY = if (isTop) sb.y else (sb.y + sb.height)
         var y = if (isTop) anchorY else anchorY - windowHeight
 
         x += if (isRight) -horizontalOffset else horizontalOffset
