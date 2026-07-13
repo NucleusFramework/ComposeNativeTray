@@ -7,9 +7,6 @@ import dev.nucleusframework.composenativetray.lib.windows.WindowsNativeBridge
 import dev.nucleusframework.composenativetray.tray.impl.MacTrayInitializer
 import dev.nucleusframework.core.runtime.LinuxDesktopEnvironment
 import dev.nucleusframework.core.runtime.Platform
-import java.awt.GraphicsEnvironment
-import java.awt.Rectangle
-import java.awt.Toolkit
 import java.io.File
 import java.util.Collections
 import java.util.Properties
@@ -81,29 +78,15 @@ internal object TrayClickTracker {
 }
 
 /**
- * Get logical screen size (DPI-independent on Windows).
- * On Windows, Toolkit.getDefaultToolkit().screenSize returns logical coordinates.
+ * Returns the bounds of the screen containing the given point. The Tao bridge
+ * only exposes the primary monitor's work area, so multi-monitor setups
+ * resolve to the primary work area (the tray lives there on all platforms).
  */
-private fun getLogicalScreenSize(): java.awt.Dimension {
-    return Toolkit.getDefaultToolkit().screenSize
-}
-
-/**
- * Returns the bounds of the screen that contains the given point.
- * Falls back to the primary screen if the point is not on any screen.
- */
+@Suppress("UNUSED_PARAMETER")
 private fun getScreenBoundsAt(
     x: Int,
     y: Int,
-): Rectangle {
-    val ge = GraphicsEnvironment.getLocalGraphicsEnvironment()
-    for (gd in ge.screenDevices) {
-        val bounds = gd.defaultConfiguration.bounds
-        if (bounds.contains(x, y)) return bounds
-    }
-    val primary = Toolkit.getDefaultToolkit().screenSize
-    return Rectangle(0, 0, primary.width, primary.height)
-}
+): ScreenRect = TrayScreenGeometry.workAreaLogical()
 
 internal fun convertPositionToCorner(
     x: Int,
@@ -285,7 +268,7 @@ fun getTrayWindowPosition(
     horizontalOffset: Int = 0,
     verticalOffset: Int = 0,
 ): WindowPosition {
-    val screenSize = Toolkit.getDefaultToolkit().screenSize
+    val screen = TrayScreenGeometry.workAreaLogical()
 
     if (Platform.Current == Platform.Windows) {
         val freshPos =
@@ -296,7 +279,7 @@ fun getTrayWindowPosition(
             freshPos ?: run {
                 // No click yet (e.g., initiallyVisible = true). Synthesize one near the tray corner
                 val corner = getTrayPosition()
-                val (sx, sy) = syntheticClickFromCorner(corner, screenSize.width, screenSize.height)
+                val (sx, sy) = syntheticClickFromCorner(corner, screen)
                 return calculateWindowPositionFromClick(
                     sx, sy, corner,
                     windowWidth, windowHeight,
@@ -349,24 +332,7 @@ fun getTrayWindowPosition(
         }
     }
 
-    return when (getTrayPosition()) {
-        TrayPosition.TOP_LEFT -> WindowPosition(x = (0 + horizontalOffset).dp, y = (0 + verticalOffset).dp)
-        TrayPosition.TOP_RIGHT ->
-            WindowPosition(
-                x = (screenSize.width - windowWidth + horizontalOffset).dp,
-                y = (0 + verticalOffset).dp,
-            )
-        TrayPosition.BOTTOM_LEFT ->
-            WindowPosition(
-                x = (0 + horizontalOffset).dp,
-                y = (screenSize.height - windowHeight + verticalOffset).dp,
-            )
-        TrayPosition.BOTTOM_RIGHT ->
-            WindowPosition(
-                x = (screenSize.width - windowWidth + horizontalOffset).dp,
-                y = (screenSize.height - windowHeight + verticalOffset).dp,
-            )
-    }
+    return fallbackCornerPosition(windowWidth, windowHeight, horizontalOffset, verticalOffset)
 }
 
 /** Variante par instance (Windows multi-tray, mac precise) + offsets */
@@ -432,8 +398,13 @@ fun getTrayWindowPositionForInstance(
                     )
                 }
             }
-            // Fallback global
-            getTrayWindowPosition(windowWidth, windowHeight, horizontalOffset, verticalOffset)
+            // Tray not registered / status item not realised yet (initialisation
+            // is async: icon rendering + IO dispatch). Report PlatformDefault so
+            // callers with a poll loop (visibleOnStart path in TrayAppImplPanel)
+            // retry until the precise status-item rect is available, instead of
+            // latching a screen-corner fallback position.
+            debugln { "[TrayPosition] mac instance $instanceId not ready (handle=$trayHandle), PlatformDefault" }
+            WindowPosition.PlatformDefault
         }
         else -> getTrayWindowPosition(windowWidth, windowHeight, horizontalOffset, verticalOffset)
     }
@@ -441,7 +412,7 @@ fun getTrayWindowPositionForInstance(
 
 /**
  * Calcule la position (x,y) depuis un clic précis + applique les offsets et un clamp aux bords écran.
- * Uses the screen containing the click point for correct multi-monitor support.
+ * Coordinates are logical pixels within the primary monitor's work area.
  */
 private fun calculateWindowPositionFromClick(
     clickX: Int,
@@ -484,10 +455,13 @@ private fun calculateWindowPositionFromClick(
         debugln { "[TrayPosition] Windows: final x=$x, y=$y" }
         WindowPosition(x = x.dp, y = y.dp)
     } else {
-        val panelGuessPx = 28
-
+        // `sb` is the WORK AREA (Tao bridges): its top edge already sits below
+        // the macOS menu bar / Linux top panel, and its bottom edge above the
+        // dock/panel — anchor directly at the edge. (The pre-Tao AWT code used
+        // full-screen bounds and approximated the bar with a 28px guess; keeping
+        // that guess on top of the work area double-counts the bar.)
         var x = clickX - (windowWidth / 2)
-        val anchorY = if (isTop) sb.y + panelGuessPx else (sb.y + sb.height - panelGuessPx)
+        val anchorY = if (isTop) sb.y else (sb.y + sb.height)
         var y = if (isTop) anchorY else anchorY - windowHeight
 
         x += if (isRight) -horizontalOffset else horizontalOffset
@@ -514,15 +488,24 @@ private fun fallbackCornerPosition(
     horizontalOffset: Int,
     verticalOffset: Int,
 ): WindowPosition {
-    val screen = Toolkit.getDefaultToolkit().screenSize
+    val screen = TrayScreenGeometry.workAreaLogical()
     return when (getTrayPosition()) {
-        TrayPosition.TOP_LEFT -> WindowPosition((0 + horizontalOffset).dp, (0 + verticalOffset).dp)
-        TrayPosition.TOP_RIGHT -> WindowPosition((screen.width - w + horizontalOffset).dp, (0 + verticalOffset).dp)
-        TrayPosition.BOTTOM_LEFT -> WindowPosition((0 + horizontalOffset).dp, (screen.height - h + verticalOffset).dp)
+        TrayPosition.TOP_LEFT ->
+            WindowPosition((screen.x + horizontalOffset).dp, (screen.y + verticalOffset).dp)
+        TrayPosition.TOP_RIGHT ->
+            WindowPosition(
+                (screen.x + screen.width - w + horizontalOffset).dp,
+                (screen.y + verticalOffset).dp,
+            )
+        TrayPosition.BOTTOM_LEFT ->
+            WindowPosition(
+                (screen.x + horizontalOffset).dp,
+                (screen.y + screen.height - h + verticalOffset).dp,
+            )
         TrayPosition.BOTTOM_RIGHT ->
             WindowPosition(
-                (screen.width - w + horizontalOffset).dp,
-                (screen.height - h + verticalOffset).dp,
+                (screen.x + screen.width - w + horizontalOffset).dp,
+                (screen.y + screen.height - h + verticalOffset).dp,
             )
     }
 }
@@ -551,106 +534,27 @@ fun debugDeleteTrayPropertiesFiles() {
     files.filter(File::exists).forEach { runCatching { it.delete() } }
 }
 
-// DPI helpers / hit-test utilities unchanged (kept here for completeness)
 private fun dpiAwareHalfIconOffset(): Int {
-    return try {
-        val dpi = Toolkit.getDefaultToolkit().screenResolution
-        val scale = dpi / 96.0
-        (15 * scale).roundToInt().coerceAtLeast(0)
-    } catch (_: Throwable) {
-        15
-    }
+    val scale = TrayScreenGeometry.scale()
+    return (15 * scale).roundToInt().coerceAtLeast(0)
 }
-
-/**
- * Detects the Windows taskbar height based on DPI scaling.
- * Default taskbar: 40px at 100%, 48px at 125%, 60px at 150%, etc.
- */
-private fun getWindowsTaskbarHeight(): Int {
-    return try {
-        val dpi = Toolkit.getDefaultToolkit().screenResolution
-        val scale = dpi / 96.0
-        // Taskbar default height: 40px at 100% scaling
-        (40 * scale).roundToInt().coerceIn(32, 72)
-    } catch (_: Throwable) {
-        40
-    }
-}
-
-/**
- * Gets the appropriate bar size (taskbar/menubar/panel) for the current OS.
- */
-private fun getSystemBarSize(): Int {
-    return when (Platform.Current) {
-        Platform.Windows -> getWindowsTaskbarHeight()
-        Platform.MacOS -> 25 // macOS menu bar
-        else -> 28 // Linux panel (GNOME/KDE average)
-    }
-}
-
-internal fun isPointWithinMacStatusItem(
-    px: Int,
-    py: Int,
-): Boolean {
-    if (Platform.Current != Platform.MacOS) return false
-    val (ix, iy) = getStatusItemXYForMac()
-    if (ix == 0 && iy == 0) return false
-    val dpi = runCatching { Toolkit.getDefaultToolkit().screenResolution }.getOrDefault(96)
-    val scale = dpi / 96.0
-    val half = (14 * scale).roundToInt().coerceAtLeast(8)
-    val left = ix - half
-    val right = ix + half
-    val top = iy - half
-    val bottom = iy + half
-    return px in left..right && py in top..bottom
-}
-
-internal fun isPointWithinLinuxStatusItem(
-    px: Int,
-    py: Int,
-): Boolean {
-    if (Platform.Current != Platform.Linux) return false
-    val click = TrayClickTracker.getLastClickPosition() ?: loadTrayClickPosition() ?: return false
-    val (ix, iy) = click.x to click.y
-    val baseIconSizeAt1x =
-        when (LinuxDesktopEnvironment.Current) {
-            LinuxDesktopEnvironment.KDE -> 22
-            LinuxDesktopEnvironment.Gnome -> 24
-            LinuxDesktopEnvironment.Cinnamon -> 24
-            LinuxDesktopEnvironment.Mate -> 24
-            LinuxDesktopEnvironment.XFCE -> 24
-            else -> 24
-        }
-    val dpi = runCatching { Toolkit.getDefaultToolkit().screenResolution }.getOrDefault(96)
-    val scale = (dpi / 96.0).coerceAtLeast(0.5)
-    val half = (baseIconSizeAt1x * 0.5 * scale).toInt().coerceAtLeast(8)
-    val fudge = (4 * scale).toInt().coerceAtLeast(2)
-    val left = ix - half - fudge
-    val right = ix + half + fudge
-    val top = iy - half - fudge
-    val bottom = iy + half + fudge
-    return px in left..right && py in top..bottom
-}
-
-// TrayPosition.kt
 
 private fun syntheticClickFromCorner(
     corner: TrayPosition,
-    screenW: Int,
-    screenH: Int,
+    screen: ScreenRect,
 ): Pair<Int, Int> {
     val half = dpiAwareHalfIconOffset() // ~half icon in px, DPI-aware
     val x =
         if (corner == TrayPosition.TOP_RIGHT || corner == TrayPosition.BOTTOM_RIGHT) {
-            screenW - half
+            screen.x + screen.width - half
         } else {
-            half
+            screen.x + half
         }
     val y =
         if (corner == TrayPosition.BOTTOM_LEFT || corner == TrayPosition.BOTTOM_RIGHT) {
-            screenH - half
+            screen.y + screen.height - half
         } else {
-            half
+            screen.y + half
         }
     return x to y
 }

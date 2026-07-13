@@ -12,9 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.window.ApplicationScope
+import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
-import dev.nucleusframework.composenativetray.tray.impl.AwtTrayInitializer
 import dev.nucleusframework.composenativetray.tray.impl.LinuxTrayInitializer
 import dev.nucleusframework.composenativetray.tray.impl.MacTrayInitializer
 import dev.nucleusframework.composenativetray.tray.impl.WindowsTrayInitializer
@@ -25,12 +24,12 @@ import dev.nucleusframework.composenativetray.utils.debugln
 import dev.nucleusframework.composenativetray.utils.errorln
 import dev.nucleusframework.composenativetray.utils.extractToTempIfDifferent
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
-import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
 import dev.nucleusframework.core.runtime.Platform
 import dev.nucleusframework.core.runtime.Platform.Linux
 import dev.nucleusframework.core.runtime.Platform.MacOS
 import dev.nucleusframework.core.runtime.Platform.Unknown
 import dev.nucleusframework.core.runtime.Platform.Windows
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,13 +37,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.internal.LowPriorityInOverloadResolution
 
 internal class NativeTray {
     private val trayScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
-    private val awtTrayUsed = AtomicBoolean(false)
 
     private val os = Platform.Current
     private val instanceId: String = "tray-" + System.identityHashCode(this)
@@ -96,10 +92,7 @@ internal class NativeTray {
                         menuContent,
                         onMenuOpened,
                     )
-                Unknown -> {
-                    AwtTrayInitializer.update(iconPath, tooltip, primaryAction, menuContent)
-                    awtTrayUsed.set(true)
-                }
+                Unknown -> errorln { "[NativeTray] Unsupported platform: no system tray backend available" }
                 else -> {}
             }
         } catch (th: Throwable) {
@@ -171,10 +164,8 @@ internal class NativeTray {
                                 menuContent,
                                 onMenuOpened,
                             )
-                        Unknown -> {
-                            AwtTrayInitializer.update(pngIconPath, tooltip, primaryAction, menuContent)
-                            awtTrayUsed.set(true)
-                        }
+                        Unknown ->
+                            errorln { "[NativeTray] Unsupported platform: no system tray backend available" }
                         else -> {}
                     }
                 } catch (th: Throwable) {
@@ -253,7 +244,7 @@ internal class NativeTray {
             Linux -> LinuxTrayInitializer.dispose(instanceId)
             Windows -> WindowsTrayInitializer.dispose(instanceId)
             MacOS -> MacTrayInitializer.dispose(instanceId)
-            Unknown -> if (awtTrayUsed.get()) AwtTrayInitializer.dispose()
+            Unknown -> {}
             else -> {}
         }
         initialized = false
@@ -322,19 +313,8 @@ internal class NativeTray {
                 errorln { "[NativeTray] Error initializing tray: $th" }
             }
 
-            val awtTrayRequired = os == Unknown || !trayInitialized
-            if (awtTrayRequired) {
-                if (AwtTrayInitializer.isSupported()) {
-                    try {
-                        debugln { "[NativeTray] Initializing AWT tray with icon path: $iconPath" }
-                        AwtTrayInitializer.initialize(iconPath, tooltip, primaryAction, menuContent)
-                        awtTrayUsed.set(true)
-                    } catch (th: Throwable) {
-                        errorln { "[NativeTray] Error initializing AWT tray: $th" }
-                    }
-                } else {
-                    debugln { "[NativeTray] AWT tray is not supported" }
-                }
+            if (os == Unknown || !trayInitialized) {
+                errorln { "[NativeTray] No native tray backend could be initialized on this platform" }
             }
         }
     }
@@ -370,7 +350,7 @@ internal class NativeTray {
     replaceWith = ReplaceWith("Tray(iconContent, tooltip, primaryAction, menuContent)"),
 )
 @Composable
-fun ApplicationScope.Tray(
+fun NucleusApplicationScope.Tray(
     iconPath: String,
     windowsIconPath: String = iconPath,
     tooltip: String,
@@ -409,7 +389,7 @@ fun ApplicationScope.Tray(
 
 @Composable
 @LowPriorityInOverloadResolution
-fun ApplicationScope.Tray(
+fun NucleusApplicationScope.Tray(
     iconContent: @Composable () -> Unit,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -451,7 +431,7 @@ fun ApplicationScope.Tray(
 
 @Composable
 @LowPriorityInOverloadResolution
-fun ApplicationScope.Tray(
+fun NucleusApplicationScope.Tray(
     icon: ImageVector,
     tint: Color? = null,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
@@ -547,7 +527,7 @@ fun ApplicationScope.Tray(
 
 @Composable
 @LowPriorityInOverloadResolution
-fun ApplicationScope.Tray(
+fun NucleusApplicationScope.Tray(
     icon: Painter,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -603,7 +583,7 @@ fun ApplicationScope.Tray(
  */
 @Composable
 @LowPriorityInOverloadResolution
-fun ApplicationScope.Tray(
+fun NucleusApplicationScope.Tray(
     windowsIcon: Painter,
     macLinuxIcon: ImageVector,
     tint: Color? = null,
@@ -644,7 +624,7 @@ fun ApplicationScope.Tray(
  */
 @Composable
 @LowPriorityInOverloadResolution
-fun ApplicationScope.Tray(
+fun NucleusApplicationScope.Tray(
     icon: DrawableResource,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -666,7 +646,7 @@ fun ApplicationScope.Tray(
 
 @Composable
 @LowPriorityInOverloadResolution
-fun ApplicationScope.Tray(
+fun NucleusApplicationScope.Tray(
     windowsIcon: DrawableResource,
     macLinuxIcon: ImageVector,
     tint: Color? = null,

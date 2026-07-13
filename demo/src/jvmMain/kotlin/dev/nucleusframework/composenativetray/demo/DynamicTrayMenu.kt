@@ -1,35 +1,31 @@
 package dev.nucleusframework.composenativetray.demo
 
 import androidx.compose.foundation.Image
+import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.Tray
-import dev.nucleusframework.graalvm.GraalVmInitializer
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
-import dev.nucleusframework.core.runtime.SingleInstanceManager
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
 import dev.nucleusframework.composenativetray.utils.getTrayPosition
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.TitleBar
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import composenativetray.demo.generated.resources.icon2
 import org.jetbrains.compose.resources.painterResource
-import java.awt.Color
-import javax.swing.JFrame
-import javax.swing.SwingUtilities
-import javax.swing.Timer
 
 private enum class ServiceStatus {
     RUNNING, STOPPED
 }
 
-fun main() {
-    GraalVmInitializer.initialize()
-    application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     val logTag = "NativeTray"
     allowComposeNativeTrayLogging = true
     composeNativeTrayLoggingLevel = ComposeNativeTrayLoggingLevel.DEBUG
@@ -42,14 +38,7 @@ fun main() {
     var hideOnClose by remember { mutableStateOf(true) }
     var serviceStatus by remember { mutableStateOf(ServiceStatus.STOPPED) }
 
-    val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-        isWindowVisible = true
-    })
-
-    if (!isSingleInstance) {
-        exitApplication()
-        return@application
-    }
+    // Single-instance handling is now managed by nucleusApplication (disabled here)
 
     val running = serviceStatus == ServiceStatus.RUNNING
     var icon by remember { mutableStateOf(Res.drawable.icon) }
@@ -151,23 +140,25 @@ fun main() {
         )
     }
 
-    Window(
-        onCloseRequest = {
-            if (hideOnClose) {
-                isWindowVisible = false
-            } else {
-                exitApplication()
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        DecoratedWindow(
+            onCloseRequest = {
+                if (hideOnClose) {
+                    isWindowVisible = false
+                } else {
+                    exitApplication()
+                }
+            },
+            title = "Compose Desktop Application with Two Screens",
+            visible = isWindowVisible,
+            icon = painterResource(Res.drawable.icon) // Optional: Set window icon
+        ) {
+            TitleBar { Text("Compose Desktop Application with Two Screens") }
+            nucleusWindow.toFront()
+            App(textVisible, alwaysShowTray, hideOnClose) { alwaysShow, hideOnCloseState ->
+                alwaysShowTray = alwaysShow
+                hideOnClose = hideOnCloseState
             }
-        },
-        title = "Compose Desktop Application with Two Screens",
-        visible = isWindowVisible,
-        icon = painterResource(Res.drawable.icon) // Optional: Set window icon
-    ) {
-        window.toFront()
-        App(textVisible, alwaysShowTray, hideOnClose) { alwaysShow, hideOnCloseState ->
-            alwaysShowTray = alwaysShow
-            hideOnClose = hideOnCloseState
         }
     }
-}
 }

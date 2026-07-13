@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -11,26 +12,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
-import androidx.compose.ui.window.application
-import androidx.compose.ui.window.rememberWindowState
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.Tray
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
-import dev.nucleusframework.core.runtime.SingleInstanceManager
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
 import dev.nucleusframework.composenativetray.utils.getTrayPosition
 import dev.nucleusframework.composenativetray.utils.getTrayWindowPosition
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.TitleBar
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import org.jetbrains.compose.resources.painterResource
 
-fun main() = application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     allowComposeNativeTrayLogging = false
     composeNativeTrayLoggingLevel = ComposeNativeTrayLoggingLevel.DEBUG
     val logTag = "NativeTray"
-    
+
     println("$logTag: TrayPosition: ${getTrayPosition()}")
 
     var isWindowVisible by remember { mutableStateOf(true) }
@@ -39,16 +41,6 @@ fun main() = application {
     var hideOnClose by remember { mutableStateOf(true) }
     var notificationsEnabled by remember { mutableStateOf(false) }
     var initialChecked by remember { mutableStateOf(true) }
-
-    val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-        isWindowVisible = true
-    })
-
-    if (!isSingleInstance) {
-        exitApplication()
-        return@application
-    }
-
 
     // Always create the Tray composable, but make it conditional on visibility
     // This ensures it's recomposed when alwaysShowTray changes
@@ -146,26 +138,29 @@ fun main() = application {
     val windowHeight = 600
     val windowPosition = getTrayWindowPosition(windowWidth, windowHeight)
 
-    Window(
-        onCloseRequest = {
-            if (hideOnClose) {
-                isWindowVisible = false
-            } else {
-                exitApplication()
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        DecoratedWindow(
+            onCloseRequest = {
+                if (hideOnClose) {
+                    isWindowVisible = false
+                } else {
+                    exitApplication()
+                }
+            },
+            state = WindowState(
+                width = windowWidth.dp,
+                height = windowHeight.dp,
+                position = windowPosition
+            ),
+            title = "Compose Desktop Application with Two Screens",
+            visible = isWindowVisible,
+            icon = painterResource(Res.drawable.icon) // Optional: Set window icon
+        ) {
+            TitleBar { Text("Compose Desktop Application with Two Screens") }
+            App(textVisible, alwaysShowTray, hideOnClose) { alwaysShow, hideOnCloseState ->
+                alwaysShowTray = alwaysShow
+                hideOnClose = hideOnCloseState
             }
-        },
-        state = WindowState(
-            width = windowWidth.dp,
-            height = windowHeight.dp,
-            position = windowPosition
-        ),
-        title = "Compose Desktop Application with Two Screens",
-        visible = isWindowVisible,
-        icon = painterResource(Res.drawable.icon) // Optional: Set window icon
-    ) {
-        App(textVisible, alwaysShowTray, hideOnClose) { alwaysShow, hideOnCloseState ->
-            alwaysShowTray = alwaysShow
-            hideOnClose = hideOnCloseState
         }
     }
 }

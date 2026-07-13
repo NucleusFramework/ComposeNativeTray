@@ -47,9 +47,10 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.coroutines.swing)
             implementation(libs.nucleus.core.runtime)
             implementation(libs.nucleus.darkmode.detector)
+            api(libs.nucleus.application)
+            implementation(libs.nucleus.decorated.window.tao)
         }
         jvmTest.dependencies {
             implementation(kotlin("test"))

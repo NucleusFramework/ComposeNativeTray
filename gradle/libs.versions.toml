@@ -5,15 +5,18 @@ kotlinx-coroutines = "1.11.0"
 compose = "1.11.1"
 detekt = "1.23.8"
 ktlint = "12.1.2"
-nucleus = "2.0.0-alpha-202607101252"
+nucleus = "2.0.3"
+nucleus-plugin = "2.0.3"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
-kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 nucleus-core-runtime = { module = "dev.nucleusframework:nucleus.core-runtime", version.ref = "nucleus" }
 nucleus-darkmode-detector = { module = "dev.nucleusframework:nucleus.darkmode-detector", version.ref = "nucleus" }
 nucleus-graalvm-runtime = { module = "dev.nucleusframework:nucleus.graalvm-runtime", version.ref = "nucleus" }
+nucleus-application = { module = "dev.nucleusframework:nucleus.nucleus-application", version.ref = "nucleus" }
+nucleus-decorated-window-tao = { module = "dev.nucleusframework:nucleus.decorated-window-tao", version.ref = "nucleus" }
+nucleus-decorated-window-material3 = { module = "dev.nucleusframework:nucleus.decorated-window-material3", version.ref = "nucleus" }
 
 [plugins]
 multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -23,4 +26,4 @@ vannitktech-maven-publish = { id = "com.vanniktech.maven.publish", version = "0.
 dokka = { id = "org.jetbrains.dokka", version = "2.2.0" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
-nucleus = { id = "dev.nucleusframework", version.ref = "nucleus" }
+nucleus = { id = "dev.nucleusframework", version.ref = "nucleus-plugin" }

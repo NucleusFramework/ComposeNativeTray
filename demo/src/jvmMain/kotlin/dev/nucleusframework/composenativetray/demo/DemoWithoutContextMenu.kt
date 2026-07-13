@@ -3,6 +3,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -11,18 +12,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.Tray
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
-import dev.nucleusframework.core.runtime.SingleInstanceManager
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
 import dev.nucleusframework.composenativetray.utils.getTrayPosition
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.TitleBar
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 
-fun main() = application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     allowComposeNativeTrayLogging = true
     composeNativeTrayLoggingLevel = ComposeNativeTrayLoggingLevel.DEBUG
 
@@ -35,14 +38,7 @@ fun main() = application {
     var alwaysShowTray by remember { mutableStateOf(false) }
     var hideOnClose by remember { mutableStateOf(true) }
 
-    val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-        isWindowVisible = true
-    })
-
-    if (!isSingleInstance) {
-        exitApplication()
-        return@application
-    }
+    // Single-instance handling is now managed by nucleusApplication (disabled here)
 
     // Always create the Tray composable, but make it conditional on visibility
     // This ensures it's recomposed when alwaysShowTray changes
@@ -63,21 +59,24 @@ fun main() = application {
         )
     }
 
-    Window(
-        onCloseRequest = {
-            if (hideOnClose) {
-                isWindowVisible = false
-            } else {
-                exitApplication()
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        DecoratedWindow(
+            onCloseRequest = {
+                if (hideOnClose) {
+                    isWindowVisible = false
+                } else {
+                    exitApplication()
+                }
+            },
+            title = "Compose Desktop Application with Two Screens",
+            visible = isWindowVisible,
+            icon = org.jetbrains.compose.resources.painterResource(Res.drawable.icon) // Optional: Set window icon
+        ) {
+            TitleBar { Text("Compose Desktop Application with Two Screens") }
+            App(textVisible, alwaysShowTray, hideOnClose) { alwaysShow, hideOnCloseState ->
+                alwaysShowTray = alwaysShow
+                hideOnClose = hideOnCloseState
             }
-        },
-        title = "Compose Desktop Application with Two Screens",
-        visible = isWindowVisible,
-        icon = org.jetbrains.compose.resources.painterResource(Res.drawable.icon) // Optional: Set window icon
-    ) {
-        App(textVisible, alwaysShowTray, hideOnClose) { alwaysShow, hideOnCloseState ->
-            alwaysShowTray = alwaysShow
-            hideOnClose = hideOnCloseState
         }
     }
 }

@@ -24,6 +24,8 @@ kotlin {
             implementation(libs.nucleus.core.runtime)
             implementation(libs.nucleus.darkmode.detector)
             implementation(libs.nucleus.graalvm.runtime)
+            implementation(libs.nucleus.decorated.window.tao)
+            implementation(libs.nucleus.decorated.window.material3)
         }
     }
 }

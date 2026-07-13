@@ -1,19 +1,22 @@
 package dev.nucleusframework.composenativetray.demo
 
+import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.demo.svg.AcademicCap
 import dev.nucleusframework.composenativetray.tray.api.Tray
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
-import dev.nucleusframework.core.runtime.SingleInstanceManager
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
 import dev.nucleusframework.composenativetray.utils.getTrayPosition
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.TitleBar
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import composenativetray.demo.generated.resources.icon2
@@ -25,7 +28,7 @@ import org.jetbrains.compose.resources.painterResource
  * - A Painter resource for Windows
  * - An ImageVector for macOS and Linux
  */
-fun main() = application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     allowComposeNativeTrayLogging = true
     composeNativeTrayLoggingLevel = ComposeNativeTrayLoggingLevel.DEBUG
 
@@ -41,14 +44,7 @@ fun main() = application {
     var currentWindowsIcon by remember { mutableStateOf(Res.drawable.icon) }
     var iconTint by remember { mutableStateOf<Color?>(null) } // null means use default (white/black based on theme)
 
-    val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-        isWindowVisible = true
-    })
-
-    if (!isSingleInstance) {
-        exitApplication()
-        return@application
-    }
+    // Single-instance handling is now managed by nucleusApplication (disabled here)
 
     // Always create the Tray composable, but make it conditional on visibility
     val showTray = alwaysShowTray || !isWindowVisible
@@ -144,26 +140,29 @@ fun main() = application {
         }
     }
 
-    Window(
-        onCloseRequest = {
-            if (hideOnClose) {
-                isWindowVisible = false
-            } else {
-                exitApplication()
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        DecoratedWindow(
+            onCloseRequest = {
+                if (hideOnClose) {
+                    isWindowVisible = false
+                } else {
+                    exitApplication()
+                }
+            },
+            title = "Platform-Specific Icons Demo",
+            visible = isWindowVisible,
+            icon = painterResource(Res.drawable.icon)
+        ) {
+            TitleBar { Text("Platform-Specific Icons Demo") }
+            nucleusWindow.toFront()
+            App(
+                textVisible = true,
+                alwaysShowTray = alwaysShowTray,
+                hideOnClose = hideOnClose
+            ) { alwaysShow, hideOnCloseState ->
+                alwaysShowTray = alwaysShow
+                hideOnClose = hideOnCloseState
             }
-        },
-        title = "Platform-Specific Icons Demo",
-        visible = isWindowVisible,
-        icon = painterResource(Res.drawable.icon)
-    ) {
-        window.toFront()
-        App(
-            textVisible = true,
-            alwaysShowTray = alwaysShowTray,
-            hideOnClose = hideOnClose
-        ) { alwaysShow, hideOnCloseState ->
-            alwaysShowTray = alwaysShow
-            hideOnClose = hideOnCloseState
         }
     }
 }

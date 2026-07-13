@@ -1,17 +1,20 @@
 package dev.nucleusframework.composenativetray.demo
 
+import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.Tray
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
-import dev.nucleusframework.core.runtime.SingleInstanceManager
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
 import dev.nucleusframework.composenativetray.utils.getTrayPosition
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.TitleBar
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import composenativetray.demo.generated.resources.icon2
@@ -21,7 +24,7 @@ import org.jetbrains.compose.resources.painterResource
  * Demo application that showcases the use of the Painter API for tray icons.
  * This demo uses Res.drawable.icon and Res.drawable.icon2 resources with dynamic switching.
  */
-fun main() = application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     allowComposeNativeTrayLogging = true
     composeNativeTrayLoggingLevel = ComposeNativeTrayLoggingLevel.DEBUG
 
@@ -36,14 +39,7 @@ fun main() = application {
     // Icon state for switching between two different icons
     var currentIcon by remember { mutableStateOf(Res.drawable.icon) }
 
-    val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-        isWindowVisible = true
-    })
-
-    if (!isSingleInstance) {
-        exitApplication()
-        return@application
-    }
+    // Single-instance handling is now managed by nucleusApplication (disabled here)
 
     // Always create the Tray composable, but make it conditional on visibility
     val showTray = alwaysShowTray || !isWindowVisible
@@ -112,26 +108,29 @@ fun main() = application {
         }
     }
 
-    Window(
-        onCloseRequest = {
-            if (hideOnClose) {
-                isWindowVisible = false
-            } else {
-                exitApplication()
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        DecoratedWindow(
+            onCloseRequest = {
+                if (hideOnClose) {
+                    isWindowVisible = false
+                } else {
+                    exitApplication()
+                }
+            },
+            title = "Painter Tray Demo - Resource Icons",
+            visible = isWindowVisible,
+            icon = painterResource(Res.drawable.icon)
+        ) {
+            TitleBar { Text("Painter Tray Demo - Resource Icons") }
+            nucleusWindow.toFront()
+            App(
+                textVisible = true,
+                alwaysShowTray = alwaysShowTray,
+                hideOnClose = hideOnClose
+            ) { alwaysShow, hideOnCloseState ->
+                alwaysShowTray = alwaysShow
+                hideOnClose = hideOnCloseState
             }
-        },
-        title = "Painter Tray Demo - Resource Icons",
-        visible = isWindowVisible,
-        icon = painterResource(Res.drawable.icon)
-    ) {
-        window.toFront()
-        App(
-            textVisible = true,
-            alwaysShowTray = alwaysShowTray,
-            hideOnClose = hideOnClose
-        ) { alwaysShow, hideOnCloseState ->
-            alwaysShowTray = alwaysShow
-            hideOnClose = hideOnCloseState
         }
     }
 }

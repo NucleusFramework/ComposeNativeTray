@@ -1,19 +1,22 @@
 package dev.nucleusframework.composenativetray.demo
 
+import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.demo.svg.AcademicCap
 import dev.nucleusframework.composenativetray.tray.api.Tray
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
-import dev.nucleusframework.core.runtime.SingleInstanceManager
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
 import dev.nucleusframework.composenativetray.utils.getTrayPosition
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.TitleBar
 import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import org.jetbrains.compose.resources.painterResource
@@ -22,7 +25,7 @@ import org.jetbrains.compose.resources.painterResource
  * Demo application that showcases the use of the ImageVector API for tray icons.
  * This demo uses the AcademicCap vector as the tray icon.
  */
-fun main() = application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     allowComposeNativeTrayLogging = false
     composeNativeTrayLoggingLevel = ComposeNativeTrayLoggingLevel.DEBUG
 
@@ -37,14 +40,7 @@ fun main() = application {
     // Tint color state for the icon
     var iconTint by remember { mutableStateOf<Color?>(null) } // null means use default (white/black based on theme)
 
-    val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-        isWindowVisible = true
-    })
-
-    if (!isSingleInstance) {
-        exitApplication()
-        return@application
-    }
+    // Single-instance handling is now managed by nucleusApplication (disabled here)
 
     // Always create the Tray composable, but make it conditional on visibility
     val showTray = alwaysShowTray || !isWindowVisible
@@ -127,26 +123,29 @@ fun main() = application {
         }
     }
 
-    Window(
-        onCloseRequest = {
-            if (hideOnClose) {
-                isWindowVisible = false
-            } else {
-                exitApplication()
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        DecoratedWindow(
+            onCloseRequest = {
+                if (hideOnClose) {
+                    isWindowVisible = false
+                } else {
+                    exitApplication()
+                }
+            },
+            title = "ImageVector Tray Demo - AcademicCap",
+            visible = isWindowVisible,
+            icon = painterResource(Res.drawable.icon)
+        ) {
+            TitleBar { Text("ImageVector Tray Demo - AcademicCap") }
+            nucleusWindow.toFront()
+            App(
+                textVisible = true,
+                alwaysShowTray = alwaysShowTray,
+                hideOnClose = hideOnClose
+            ) { alwaysShow, hideOnCloseState ->
+                alwaysShowTray = alwaysShow
+                hideOnClose = hideOnCloseState
             }
-        },
-        title = "ImageVector Tray Demo - AcademicCap",
-        visible = isWindowVisible,
-        icon = painterResource(Res.drawable.icon)
-    ) {
-        window.toFront()
-        App(
-            textVisible = true,
-            alwaysShowTray = alwaysShowTray,
-            hideOnClose = hideOnClose
-        ) { alwaysShow, hideOnCloseState ->
-            alwaysShowTray = alwaysShow
-            hideOnClose = hideOnCloseState
         }
     }
 }

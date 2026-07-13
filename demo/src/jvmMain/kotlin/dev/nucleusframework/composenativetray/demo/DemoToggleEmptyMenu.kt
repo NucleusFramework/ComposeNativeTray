@@ -8,9 +8,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.Tray
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.TitleBar
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
@@ -27,7 +30,7 @@ import org.jetbrains.compose.resources.painterResource
  * the presence of a single menu item. When the flag is false, the menuContent
  * is intentionally left empty.
  */
-fun main() = application {
+fun main() = nucleusApplication(enableSingleInstance = false) {
     // Enable logging to help diagnose behavior on Linux
     allowComposeNativeTrayLogging = false
     composeNativeTrayLoggingLevel = ComposeNativeTrayLoggingLevel.DEBUG
@@ -61,7 +64,13 @@ fun main() = application {
 
 
     }
-    Window( onCloseRequest = ::exitApplication) {
-        Text("Compose Native Tray Demo")
+    NucleusDecoratedWindowTheme(isDark = isSystemInDarkMode()) {
+        DecoratedWindow(
+            onCloseRequest = ::exitApplication,
+            title = "Compose Native Tray Demo"
+        ) {
+            TitleBar { Text("Compose Native Tray Demo") }
+            Text("Compose Native Tray Demo")
+        }
     }
 }

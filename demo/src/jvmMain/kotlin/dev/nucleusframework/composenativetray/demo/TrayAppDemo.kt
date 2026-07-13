@@ -14,34 +14,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import composenativetray.demo.generated.resources.Res
+import composenativetray.demo.generated.resources.icon
+import dev.nucleusframework.application.SingleInstanceRestoreEffect
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.composenativetray.tray.api.ExperimentalTrayAppApi
 import dev.nucleusframework.composenativetray.tray.api.TrayApp
 import dev.nucleusframework.composenativetray.tray.api.TrayWindowDismissMode
 import dev.nucleusframework.composenativetray.tray.api.rememberTrayAppState
-import dev.nucleusframework.composenativetray.utils.WindowRaise
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
-import composenativetray.demo.generated.resources.Res
-import composenativetray.demo.generated.resources.icon
 import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
-import dev.nucleusframework.graalvm.GraalVmInitializer
+import dev.nucleusframework.window.material.MaterialDecoratedWindow
+import dev.nucleusframework.window.material.MaterialTitleBar
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import java.io.File
 
 @OptIn(ExperimentalTrayAppApi::class)
 fun main() {
-    GraalVmInitializer.initialize()
-    if (System.getProperty("skiko.renderApi") == null) {
-        val os = System.getProperty("os.name")?.lowercase() ?: ""
-        if (os.contains("linux") && isNvidiaGpuPresent()) {
-            System.setProperty("skiko.renderApi", "SOFTWARE")
-        }
-    }
     allowComposeNativeTrayLogging = true
-    application {
+    nucleusApplication(dockIconFollowsWindows = true) {
         var isWindowVisible by remember { mutableStateOf(true) }
         val coroutineScope = rememberCoroutineScope()
 
@@ -60,6 +52,11 @@ fun main() {
             trayAppState.onVisibilityChanged { visible ->
                 println("Tray popup visibility changed to: $visible")
             }
+        }
+
+        // A second launch of the app re-opens the tray popup.
+        SingleInstanceRestoreEffect {
+            trayAppState.show()
         }
 
         TrayApp(
@@ -154,15 +151,17 @@ fun main() {
         if (isWindowVisible) {
             val state = rememberWindowState()
 
-            Window(
-                state = state,
-                onCloseRequest = { isWindowVisible = false },
-                title = "Main App",
-                icon = painterResource(Res.drawable.icon),
+            MaterialTheme(
+                colorScheme = if (isSystemInDarkMode()) darkColorScheme() else lightColorScheme()
             ) {
-                MaterialTheme(
-                    colorScheme = if (isSystemInDarkMode()) darkColorScheme() else lightColorScheme()
+                MaterialDecoratedWindow(
+                    state = state,
+                    onCloseRequest = { isWindowVisible = false },
+                    title = "Main App",
+                    icon = painterResource(Res.drawable.icon),
                 ) {
+                    MaterialTitleBar { Text("Main App") }
+                    val mainWindow = nucleusWindow
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -219,7 +218,7 @@ fun main() {
                                 }
                             }
 
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                             Text(
                                 "Window Size Controls",
@@ -267,28 +266,13 @@ fun main() {
                     // Restore & raise when visibility toggles to true
                     LaunchedEffect(isWindowVisible) {
                         if (isWindowVisible) {
-                            WindowRaise.forceFront(window, state)
+                            mainWindow.setMinimized(false)
+                            mainWindow.toFront()
+                            mainWindow.requestFocus()
                         }
                     }
                 }
             }
         }
-    }
-}
-
-private fun isNvidiaGpuPresent(): Boolean {
-    // Check if NVIDIA driver is loaded by looking for the driver version file
-    val nvidiaDriverFile = File("/proc/driver/nvidia/version")
-    if (nvidiaDriverFile.exists()) return true
-
-    // Fallback: try running nvidia-smi
-    return try {
-        val process = ProcessBuilder("nvidia-smi", "-L")
-            .redirectErrorStream(true)
-            .start()
-        val exitCode = process.waitFor()
-        exitCode == 0
-    } catch (_: Exception) {
-        false
     }
 }

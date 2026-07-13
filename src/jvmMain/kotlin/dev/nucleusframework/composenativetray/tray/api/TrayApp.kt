@@ -38,43 +38,46 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.ApplicationScope
-import androidx.compose.ui.window.DialogWindow
-import androidx.compose.ui.window.DialogWindowScope
 import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberDialogState
-import dev.nucleusframework.composenativetray.lib.linux.LinuxOutsideClickWatcher
-import dev.nucleusframework.composenativetray.lib.mac.MacNativeBridge
-import dev.nucleusframework.composenativetray.lib.mac.MacOSWindowManager
-import dev.nucleusframework.composenativetray.lib.mac.MacOutsideClickWatcher
-import dev.nucleusframework.composenativetray.lib.windows.WindowsOutsideClickWatcher
+import androidx.compose.ui.window.rememberWindowState
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.NucleusApplicationScope
+import dev.nucleusframework.application.NucleusBackend
 import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
 import dev.nucleusframework.composenativetray.tray.impl.WindowsTrayInitializer
 import dev.nucleusframework.composenativetray.utils.ComposableIconUtils
 import dev.nucleusframework.composenativetray.utils.IconRenderProperties
 import dev.nucleusframework.composenativetray.utils.MenuContentHash
 import dev.nucleusframework.composenativetray.utils.PersistentAnimatedVisibility
-import dev.nucleusframework.composenativetray.utils.WindowVisibilityMonitor
+import dev.nucleusframework.composenativetray.utils.TrayScreenGeometry
 import dev.nucleusframework.composenativetray.utils.debugln
+import dev.nucleusframework.composenativetray.utils.getTrayWindowPosition
 import dev.nucleusframework.composenativetray.utils.getTrayWindowPositionForInstance
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
 import dev.nucleusframework.core.runtime.LinuxDesktopEnvironment
 import dev.nucleusframework.core.runtime.Platform
+import dev.nucleusframework.window.tao.TaoStandalonePopup
+import dev.nucleusframework.window.tao.isTaoStandalonePopupAvailable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-import java.awt.EventQueue.invokeLater
-import java.awt.event.WindowEvent
-import java.awt.event.WindowFocusListener
 import java.util.concurrent.atomic.AtomicLong
 
 // --------------------- Public API (defaults) ---------------------
 
+// On Windows + macOS the popup renders in a per-pixel transparent native panel,
+// so content animations composite over the desktop. On Linux the popup is
+// still an opaque Tao window (no cross-WM transparency equivalent): the
+// animation runs over the bare window background. See
+// docs/PLAN_MACOS_LINUX_PANEL.md.
+//
+// Defaults match the historical per-platform behaviour: Windows tray popups
+// slide up from the taskbar; macOS/Linux use a plain fade (menu-bar popups
+// don't slide on those platforms; KDE gets a near-instant fade).
 private val defaultTrayAppEnterTransition =
     if (Platform.Current == Platform.Windows) {
         slideInVertically(
@@ -122,7 +125,7 @@ private val defaultVerticalOffset =
 
 @ExperimentalTrayAppApi
 @Composable
-fun ApplicationScope.TrayApp(
+fun NucleusApplicationScope.TrayApp(
     icon: ImageVector,
     tint: Color? = null,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
@@ -132,7 +135,6 @@ fun ApplicationScope.TrayApp(
     visibleOnStart: Boolean = false,
     enterTransition: EnterTransition = defaultTrayAppEnterTransition,
     exitTransition: ExitTransition = defaultTrayAppExitTransition,
-    transparent: Boolean = true,
     windowsTitle: String = "",
     windowIcon: Painter? = null,
     undecorated: Boolean = true,
@@ -142,7 +144,7 @@ fun ApplicationScope.TrayApp(
     onPreviewKeyEvent: (KeyEvent) -> Boolean = { false },
     onKeyEvent: (KeyEvent) -> Boolean = { false },
     menu: (TrayMenuBuilder.() -> Unit)? = null,
-    content: @Composable DialogWindowScope.() -> Unit,
+    content: @Composable () -> Unit,
 ) {
     val iconContent: @Composable () -> Unit = {
         val isDark = isMenuBarInDarkMode()
@@ -164,7 +166,6 @@ fun ApplicationScope.TrayApp(
         visibleOnStart = visibleOnStart,
         enterTransition = enterTransition,
         exitTransition = exitTransition,
-        transparent = transparent,
         windowsTitle = windowsTitle,
         windowIcon = windowIcon,
         undecorated = undecorated,
@@ -180,7 +181,7 @@ fun ApplicationScope.TrayApp(
 
 @ExperimentalTrayAppApi
 @Composable
-fun ApplicationScope.TrayApp(
+fun NucleusApplicationScope.TrayApp(
     icon: Painter,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -189,7 +190,6 @@ fun ApplicationScope.TrayApp(
     visibleOnStart: Boolean = false,
     enterTransition: EnterTransition = defaultTrayAppEnterTransition,
     exitTransition: ExitTransition = defaultTrayAppExitTransition,
-    transparent: Boolean = true,
     windowsTitle: String = "",
     windowIcon: Painter? = null,
     undecorated: Boolean = true,
@@ -199,7 +199,7 @@ fun ApplicationScope.TrayApp(
     onPreviewKeyEvent: (KeyEvent) -> Boolean = { false },
     onKeyEvent: (KeyEvent) -> Boolean = { false },
     menu: (TrayMenuBuilder.() -> Unit)? = null,
-    content: @Composable DialogWindowScope.() -> Unit,
+    content: @Composable () -> Unit,
 ) {
     val iconContent: @Composable () -> Unit = {
         Image(painter = icon, contentDescription = null, modifier = Modifier.fillMaxSize())
@@ -213,7 +213,6 @@ fun ApplicationScope.TrayApp(
         visibleOnStart = visibleOnStart,
         enterTransition = enterTransition,
         exitTransition = exitTransition,
-        transparent = transparent,
         windowsTitle = windowsTitle,
         windowIcon = windowIcon,
         undecorated = undecorated,
@@ -230,7 +229,7 @@ fun ApplicationScope.TrayApp(
 /** Painter on Windows, ImageVector on macOS/Linux */
 @ExperimentalTrayAppApi
 @Composable
-fun ApplicationScope.TrayApp(
+fun NucleusApplicationScope.TrayApp(
     windowsIcon: Painter,
     macLinuxIcon: ImageVector,
     tint: Color? = null,
@@ -241,7 +240,6 @@ fun ApplicationScope.TrayApp(
     visibleOnStart: Boolean = false,
     enterTransition: EnterTransition = defaultTrayAppEnterTransition,
     exitTransition: ExitTransition = defaultTrayAppExitTransition,
-    transparent: Boolean = true,
     windowsTitle: String = "",
     windowIcon: Painter? = null,
     undecorated: Boolean = true,
@@ -251,7 +249,7 @@ fun ApplicationScope.TrayApp(
     onPreviewKeyEvent: (KeyEvent) -> Boolean = { false },
     onKeyEvent: (KeyEvent) -> Boolean = { false },
     menu: (TrayMenuBuilder.() -> Unit)? = null,
-    content: @Composable DialogWindowScope.() -> Unit,
+    content: @Composable () -> Unit,
 ) {
     if (Platform.Current == Platform.Windows) {
         TrayApp(
@@ -263,7 +261,6 @@ fun ApplicationScope.TrayApp(
             visibleOnStart = visibleOnStart,
             enterTransition = enterTransition,
             exitTransition = exitTransition,
-            transparent = transparent,
             windowsTitle = windowsTitle,
             windowIcon = windowIcon,
             undecorated = undecorated,
@@ -286,7 +283,6 @@ fun ApplicationScope.TrayApp(
             visibleOnStart = visibleOnStart,
             enterTransition = enterTransition,
             exitTransition = exitTransition,
-            transparent = transparent,
             windowsTitle = windowsTitle,
             windowIcon = windowIcon,
             undecorated = undecorated,
@@ -303,7 +299,7 @@ fun ApplicationScope.TrayApp(
 
 @ExperimentalTrayAppApi
 @Composable
-fun ApplicationScope.TrayApp(
+fun NucleusApplicationScope.TrayApp(
     icon: DrawableResource,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -312,7 +308,6 @@ fun ApplicationScope.TrayApp(
     visibleOnStart: Boolean = false,
     enterTransition: EnterTransition = defaultTrayAppEnterTransition,
     exitTransition: ExitTransition = defaultTrayAppExitTransition,
-    transparent: Boolean = true,
     windowsTitle: String = "",
     windowIcon: Painter? = null,
     undecorated: Boolean = true,
@@ -322,7 +317,7 @@ fun ApplicationScope.TrayApp(
     onPreviewKeyEvent: (KeyEvent) -> Boolean = { false },
     onKeyEvent: (KeyEvent) -> Boolean = { false },
     menu: (TrayMenuBuilder.() -> Unit)? = null,
-    content: @Composable DialogWindowScope.() -> Unit,
+    content: @Composable () -> Unit,
 ) {
     TrayApp(
         icon = painterResource(icon),
@@ -333,13 +328,14 @@ fun ApplicationScope.TrayApp(
         visibleOnStart = visibleOnStart,
         enterTransition = enterTransition,
         exitTransition = exitTransition,
-        transparent = transparent,
         windowsTitle = windowsTitle,
         windowIcon = windowIcon,
         undecorated = undecorated,
         resizable = resizable,
         horizontalOffset = horizontalOffset,
         verticalOffset = verticalOffset,
+        onPreviewKeyEvent = onPreviewKeyEvent,
+        onKeyEvent = onKeyEvent,
         menu = menu,
         content = content,
     )
@@ -347,7 +343,7 @@ fun ApplicationScope.TrayApp(
 
 @ExperimentalTrayAppApi
 @Composable
-fun ApplicationScope.TrayApp(
+fun NucleusApplicationScope.TrayApp(
     windowsIcon: DrawableResource,
     macLinuxIcon: ImageVector,
     tint: Color? = null,
@@ -358,7 +354,6 @@ fun ApplicationScope.TrayApp(
     visibleOnStart: Boolean = false,
     enterTransition: EnterTransition = defaultTrayAppEnterTransition,
     exitTransition: ExitTransition = defaultTrayAppExitTransition,
-    transparent: Boolean = true,
     windowsTitle: String = "",
     windowIcon: Painter? = null,
     undecorated: Boolean = true,
@@ -368,7 +363,7 @@ fun ApplicationScope.TrayApp(
     onPreviewKeyEvent: (KeyEvent) -> Boolean = { false },
     onKeyEvent: (KeyEvent) -> Boolean = { false },
     menu: (TrayMenuBuilder.() -> Unit)? = null,
-    content: @Composable DialogWindowScope.() -> Unit,
+    content: @Composable () -> Unit,
 ) {
     if (Platform.Current == Platform.Windows) {
         TrayApp(
@@ -380,7 +375,6 @@ fun ApplicationScope.TrayApp(
             visibleOnStart = visibleOnStart,
             enterTransition = enterTransition,
             exitTransition = exitTransition,
-            transparent = transparent,
             windowsTitle = windowsTitle,
             windowIcon = windowIcon,
             undecorated = undecorated,
@@ -403,7 +397,6 @@ fun ApplicationScope.TrayApp(
             visibleOnStart = visibleOnStart,
             enterTransition = enterTransition,
             exitTransition = exitTransition,
-            transparent = transparent,
             windowsTitle = windowsTitle,
             windowIcon = windowIcon,
             undecorated = undecorated,
@@ -418,11 +411,22 @@ fun ApplicationScope.TrayApp(
     }
 }
 
-// --------------------- Core router ---------------------
+// --------------------- Core implementation (Tao backend only) ---------------------
 
+/**
+ * Tray icon + anchored popup. Runs exclusively on the Nucleus Tao backend —
+ * call it inside `nucleusApplication(backend = NucleusBackend.Tao)` (or
+ * `Auto` with `decorated-window-tao` on the classpath).
+ *
+ * On Windows + macOS the popup body is hosted in a standalone per-pixel
+ * transparent, non-activating native panel — no backing window exists anywhere
+ * (nothing in the taskbar/Dock, Alt-Tab or the Start task view). On Linux the
+ * popup is a regular undecorated Tao window (opaque): no cross-WM transparency
+ * equivalent exists.
+ */
 @ExperimentalTrayAppApi
 @Composable
-fun ApplicationScope.TrayApp(
+fun NucleusApplicationScope.TrayApp(
     iconContent: @Composable () -> Unit,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -431,7 +435,6 @@ fun ApplicationScope.TrayApp(
     visibleOnStart: Boolean = false,
     enterTransition: EnterTransition = defaultTrayAppEnterTransition,
     exitTransition: ExitTransition = defaultTrayAppExitTransition,
-    transparent: Boolean = true,
     windowsTitle: String = "",
     windowIcon: Painter? = null,
     undecorated: Boolean = true,
@@ -441,61 +444,43 @@ fun ApplicationScope.TrayApp(
     onPreviewKeyEvent: (KeyEvent) -> Boolean = { false },
     onKeyEvent: (KeyEvent) -> Boolean = { false },
     menu: (TrayMenuBuilder.() -> Unit)? = null,
-    content: @Composable DialogWindowScope.() -> Unit,
+    content: @Composable () -> Unit,
 ) {
-    when (Platform.Current) {
-        Platform.Linux ->
-            TrayAppImplLinux(
-                iconContent,
-                iconRenderProperties,
-                tooltip,
-                state,
-                windowSize,
-                visibleOnStart,
-                enterTransition,
-                exitTransition,
-                transparent,
-                windowsTitle,
-                windowIcon,
-                undecorated,
-                resizable,
-                horizontalOffset,
-                verticalOffset,
-                onPreviewKeyEvent,
-                onKeyEvent,
-                menu,
-                content,
-            )
+    require(backend == NucleusBackend.Tao) {
+        "TrayApp requires the Tao window backend. Launch with " +
+            "nucleusApplication(backend = NucleusBackend.Tao) and ship the " +
+            "nucleus.decorated-window-tao module."
+    }
 
-        else ->
-            TrayAppImplOriginal(
-                iconContent,
-                iconRenderProperties,
-                tooltip,
-                state,
-                windowSize,
-                visibleOnStart,
-                enterTransition,
-                exitTransition,
-                transparent,
-                windowsTitle,
-                windowIcon,
-                undecorated,
-                resizable,
-                horizontalOffset,
-                verticalOffset,
-                onPreviewKeyEvent,
-                onKeyEvent,
-                menu,
-                content,
-            )
+    // Linux gates on runtime availability: the panel is a raw X11 window,
+    // reachable through XWayland on Wayland sessions but absent on rare
+    // Wayland-only setups — those fall back to the opaque window impl.
+    val panelAvailable =
+        remember {
+            Platform.Current == Platform.Windows ||
+                Platform.Current == Platform.MacOS ||
+                (Platform.Current == Platform.Linux && isTaoStandalonePopupAvailable())
+        }
+    if (panelAvailable) {
+        TrayAppImplPanel(
+            iconContent, iconRenderProperties, tooltip, state, windowSize, visibleOnStart,
+            enterTransition, exitTransition,
+            horizontalOffset, verticalOffset, onPreviewKeyEvent, onKeyEvent, menu, content,
+        )
+    } else {
+        TrayAppImplWindow(
+            iconContent, iconRenderProperties, tooltip, state, windowSize, visibleOnStart,
+            enterTransition, exitTransition, windowsTitle, windowIcon, undecorated, resizable,
+            horizontalOffset, verticalOffset, onPreviewKeyEvent, onKeyEvent, menu, content,
+        )
     }
 }
 
-// --------------------- Impl: macOS/Windows ---------------------
+// --------------------- Impl: standalone transparent panel (Windows + macOS) ---------------------
 
+@Suppress("CyclomaticComplexMethod", "LongMethod")
 @Composable
-private fun ApplicationScope.TrayAppImplOriginal(
+private fun TrayAppImplPanel(
     iconContent: @Composable () -> Unit,
     iconRenderProperties: IconRenderProperties,
     tooltip: String,
@@ -504,426 +489,17 @@ private fun ApplicationScope.TrayAppImplOriginal(
     visibleOnStart: Boolean,
     enterTransition: EnterTransition,
     exitTransition: ExitTransition,
-    transparent: Boolean,
-    windowsTitle: String,
-    windowIcon: Painter?,
-    undecorated: Boolean,
-    resizable: Boolean,
     horizontalOffset: Int,
     verticalOffset: Int,
     onPreviewKeyEvent: (KeyEvent) -> Boolean,
     onKeyEvent: (KeyEvent) -> Boolean,
     menu: (TrayMenuBuilder.() -> Unit)?,
-    content: @Composable DialogWindowScope.() -> Unit,
+    content: @Composable () -> Unit,
 ) {
-    val trayAppState =
-        state ?: rememberTrayAppState(
-            initialWindowSize = windowSize ?: DpSize(300.dp, 200.dp),
-            initiallyVisible = visibleOnStart,
-            initialDismissMode = TrayWindowDismissMode.AUTO,
-        )
-    val isVisible by trayAppState.isVisible.collectAsState()
-    val currentWindowSize by trayAppState.windowSize.collectAsState()
-    val dismissMode by trayAppState.dismissMode.collectAsState()
-
-    val tray = remember { NativeTray() }
-    val isDark = isMenuBarInDarkMode()
-    val contentHash = ComposableIconUtils.calculateContentHash(iconRenderProperties, iconContent) + isDark.hashCode()
-    val pngIconPath =
-        remember(contentHash) {
-            ComposableIconUtils.renderComposableToPngFile(iconRenderProperties, iconContent)
-        }
-    val windowsIconPath =
-        remember(contentHash) {
-            if (Platform.Current == Platform.Windows) {
-                ComposableIconUtils.renderComposableToIcoFile(
-                    iconRenderProperties,
-                    iconContent,
-                )
-            } else {
-                pngIconPath
-            }
-        }
-    val menuHash = MenuContentHash.calculateMenuHash(menu)
-
-    var shouldShowWindow by remember { mutableStateOf(false) }
-
-    var lastPrimaryActionAt by remember { mutableStateOf(0L) }
     val toggleDebounceMs = 150L
-
-    var lastShownAt by remember { mutableStateOf(0L) }
-    var lastHiddenAt by remember { mutableStateOf(0L) }
     val minVisibleDurationMs = 200L
     val minHiddenDurationMs = 100L
 
-    var lastFocusLostAt by remember { mutableStateOf(0L) }
-    var autoHideEnabledAt by remember { mutableStateOf(0L) }
-
-    // Position pre-computed at click time so the LaunchedEffect can use it immediately.
-    var pendingPosition by remember { mutableStateOf<WindowPosition?>(null) }
-
-    // Store window reference for macOS Space detection
-    var windowRef by remember { mutableStateOf<java.awt.Window?>(null) }
-
-    val dialogState = rememberDialogState(size = currentWindowSize)
-    LaunchedEffect(currentWindowSize) { dialogState.size = currentWindowSize }
-
-    // Visibility controller for exit-finish observation; content will NOT be disposed.
-    val visibleState = remember { MutableTransitionState(false) }
-
-    // Thread-safe timestamps for cross-thread communication (IO thread reads, EDT writes)
-    val lastFocusLostAtMs = remember { java.util.concurrent.atomic.AtomicLong(0L) }
-    val lastHiddenAtMs = remember { java.util.concurrent.atomic.AtomicLong(0L) }
-    val lastShownAtMs = remember { java.util.concurrent.atomic.AtomicLong(0L) }
-    val lastPrimaryActionAtMs = remember { java.util.concurrent.atomic.AtomicLong(0L) }
-
-    val requestHideExplicit: () -> Unit = {
-        val now = System.currentTimeMillis()
-        val sinceShow = now - lastShownAtMs.get()
-        debugln {
-            "[TrayApp] requestHideExplicit called, sinceShow=${sinceShow}ms, " +
-                "thread=${Thread.currentThread().name}"
-        }
-        if (sinceShow >= minVisibleDurationMs) {
-            trayAppState.hide()
-            lastHiddenAtMs.set(System.currentTimeMillis())
-            lastHiddenAt = lastHiddenAtMs.get()
-        } else {
-            val wait = minVisibleDurationMs - sinceShow
-            CoroutineScope(Dispatchers.IO).launch {
-                delay(wait)
-                trayAppState.hide()
-                lastHiddenAtMs.set(System.currentTimeMillis())
-                lastHiddenAt = lastHiddenAtMs.get()
-            }
-        }
-    }
-
-    val internalPrimaryAction: () -> Unit = {
-        val now = System.currentTimeMillis()
-        // Read directly from StateFlow for thread-safe cross-thread access
-        val isVisibleNow = trayAppState.isVisible.value
-        val timeSinceLastAction = now - lastPrimaryActionAtMs.get()
-        debugln {
-            "[TrayApp] primaryAction: isVisibleNow=$isVisibleNow, " +
-                "isVisible(compose)=$isVisible, " +
-                "timeSinceLastAction=${timeSinceLastAction}ms, " +
-                "thread=${Thread.currentThread().name}"
-        }
-        if (timeSinceLastAction >= toggleDebounceMs) {
-            lastPrimaryActionAtMs.set(now)
-            lastPrimaryActionAt = now
-            if (isVisibleNow) {
-                // On macOS, check if the window is on another Space
-                if (Platform.Current == Platform.MacOS) {
-                    val onActiveSpace =
-                        runCatching {
-                            MacOSWindowManager().isFloatingWindowOnActiveSpace()
-                        }.getOrElse { true }
-                    debugln { "[TrayApp] primaryAction: onActiveSpace=$onActiveSpace" }
-                    if (!onActiveSpace) {
-                        // Window is on another Space → move it to current Space via native API
-                        debugln { "[TrayApp] primaryAction -> MOVE TO CURRENT SPACE" }
-                        invokeLater {
-                            runCatching { MacOSWindowManager().bringFloatingWindowToFront() }
-                        }
-                    } else {
-                        debugln { "[TrayApp] primaryAction -> HIDE" }
-                        requestHideExplicit()
-                    }
-                } else {
-                    debugln { "[TrayApp] primaryAction -> HIDE" }
-                    requestHideExplicit()
-                }
-            } else {
-                val hiddenAgo = now - lastHiddenAtMs.get()
-                val focusLostAgo = now - lastFocusLostAtMs.get()
-                debugln {
-                    "[TrayApp] primaryAction SHOW path: " +
-                        "hiddenAgo=${hiddenAgo}ms, focusLostAgo=${focusLostAgo}ms"
-                }
-                if (hiddenAgo >= minHiddenDurationMs) {
-                    if ((Platform.Current == Platform.Windows || Platform.Current == Platform.MacOS) && focusLostAgo < 150) {
-                        // ignore immediate re-show after focus loss on Windows/macOS
-                        debugln { "[TrayApp] primaryAction -> SHOW BLOCKED (recent focus loss)" }
-                    } else {
-                        debugln { "[TrayApp] primaryAction -> SHOW" }
-                        // Pre-compute position at click time: the native status item
-                        // geometry is guaranteed to be available right now.
-                        runCatching {
-                            val widthPx = currentWindowSize.width.value.toInt()
-                            val heightPx = currentWindowSize.height.value.toInt()
-                            pendingPosition =
-                                getTrayWindowPositionForInstance(
-                                    tray.instanceKey(), widthPx, heightPx, horizontalOffset, verticalOffset,
-                                )
-                        }
-                        trayAppState.show()
-                    }
-                } else {
-                    debugln {
-                        "[TrayApp] primaryAction -> SHOW BLOCKED " +
-                            "(too soon after hide: ${hiddenAgo}ms < ${minHiddenDurationMs}ms)"
-                    }
-                }
-            }
-        } else {
-            debugln { "[TrayApp] primaryAction -> DEBOUNCED (${timeSinceLastAction}ms < ${toggleDebounceMs}ms)" }
-        }
-    }
-
-    LaunchedEffect(isVisible) {
-        // Drive transition state
-        visibleState.targetState = isVisible
-
-        if (isVisible) {
-            if (!shouldShowWindow) {
-                val preComputed = pendingPosition
-                pendingPosition = null
-
-                val position =
-                    if (preComputed != null && preComputed !is WindowPosition.PlatformDefault) {
-                        debugln { "[TrayApp] Using preComputed position: $preComputed" }
-                        preComputed
-                    } else {
-                        // Fallback: poll for position (e.g. initiallyVisible or programmatic show)
-                        // Wait for Windows to finish reorganizing tray icons after adding a new one.
-                        // Windows moves icons around after creation, so we need to wait and re-poll.
-                        debugln { "[TrayApp] No preComputed position, waiting for tray to stabilize..." }
-                        delay(400) // Give Windows time to reorganize tray icons
-
-                        val widthPx = currentWindowSize.width.value.toInt()
-                        val heightPx = currentWindowSize.height.value.toInt()
-
-                        // On Windows, force a fresh position capture via the native API
-                        if (Platform.Current == Platform.Windows) {
-                            debugln { "[TrayApp] Re-capturing tray position from native API..." }
-                            WindowsTrayInitializer.refreshPosition(tray.instanceKey())
-                            delay(50) // Let the position update propagate
-                        }
-
-                        var pos: WindowPosition = WindowPosition.PlatformDefault
-                        val deadline = System.currentTimeMillis() + 3000
-                        while (pos is WindowPosition.PlatformDefault && System.currentTimeMillis() < deadline) {
-                            pos =
-                                getTrayWindowPositionForInstance(
-                                    tray.instanceKey(), widthPx, heightPx, horizontalOffset, verticalOffset,
-                                )
-                            debugln { "[TrayApp] Polled position: $pos" }
-                            if (pos is WindowPosition.PlatformDefault) delay(250)
-                        }
-                        pos
-                    }
-                debugln { "[TrayApp] Setting dialogState.position = $position" }
-                dialogState.position = position
-
-                // Wait for Compose to apply the position before showing the window
-                delay(30)
-
-                if (Platform.Current == Platform.Windows) {
-                    autoHideEnabledAt = System.currentTimeMillis() + 1000
-                }
-                debugln { "[TrayApp] Now showing window" }
-                shouldShowWindow = true
-                val showTime = System.currentTimeMillis()
-                lastShownAt = showTime
-                lastShownAtMs.set(showTime)
-            }
-        } else {
-            // Wait for exit animation to finish, then actually hide the window
-            if (shouldShowWindow) {
-                snapshotFlow { visibleState.isIdle && !visibleState.currentState }.first { it }
-                shouldShowWindow = false
-                val hideTime = System.currentTimeMillis()
-                lastHiddenAt = hideTime
-                lastHiddenAtMs.set(hideTime)
-            }
-        }
-    }
-
-    LaunchedEffect(pngIconPath, windowsIconPath, tooltip, internalPrimaryAction, menu, contentHash, menuHash) {
-        tray.update(pngIconPath, windowsIconPath, tooltip, internalPrimaryAction, menu)
-    }
-
-    LaunchedEffect(Unit) {
-        if (Platform.Current == Platform.MacOS) {
-            WindowVisibilityMonitor.hasAnyVisibleWindows.collectLatest { hasVisible ->
-                runCatching {
-                    val manager = MacOSWindowManager()
-                    if (hasVisible) manager.showInDock() else manager.hideFromDock()
-                }
-            }
-        }
-    }
-
-    DisposableEffect(Unit) { onDispose { tray.dispose() } }
-
-    DialogWindow(
-        onCloseRequest = { requestHideExplicit() },
-        title = windowsTitle,
-        icon = windowIcon,
-        undecorated = undecorated,
-        resizable = resizable,
-        focusable = true,
-        alwaysOnTop = true,
-        transparent = transparent,
-        visible = shouldShowWindow,
-        state = dialogState,
-        onPreviewKeyEvent = onPreviewKeyEvent,
-        onKeyEvent = onKeyEvent,
-    ) {
-        DisposableEffect(shouldShowWindow, dismissMode) {
-            if (!shouldShowWindow) return@DisposableEffect onDispose { }
-
-            // Store window reference for Space detection on macOS
-            windowRef = window
-
-            try {
-                window.name = WindowVisibilityMonitor.TRAY_DIALOG_NAME
-            } catch (_: Throwable) {
-            }
-            runCatching { WindowVisibilityMonitor.recompute() }
-
-            debugln {
-                "[TrayApp] Window shown at native position: x=${window.x}, y=${window.y}, " +
-                    "dialogState.position=${dialogState.position}"
-            }
-
-            invokeLater {
-                // Move the popup to the current Space before bringing it to front (macOS)
-                if (Platform.Current == Platform.MacOS) {
-                    debugln { "[TrayApp] Setting up macOS Space behavior on window..." }
-                    val nativeResult = runCatching { MacNativeBridge.nativeSetMoveToActiveSpace() }
-                    debugln {
-                        "[TrayApp] nativeSetMoveToActiveSpace: " +
-                            "${nativeResult.exceptionOrNull()?.message ?: "OK"}"
-                    }
-                    val moveResult = runCatching { MacOSWindowManager().setMoveToActiveSpace(window) }
-                    debugln {
-                        "[TrayApp] setMoveToActiveSpace " +
-                            "result=${moveResult.getOrNull()}, " +
-                            "error=${moveResult.exceptionOrNull()?.message}"
-                    }
-                }
-                debugln { "[TrayApp] After invokeLater: window at x=${window.x}, y=${window.y}" }
-                runCatching {
-                    window.toFront()
-                    window.requestFocus()
-                    window.requestFocusInWindow()
-                }
-            }
-
-            val focusListener =
-                object : WindowFocusListener {
-                    override fun windowGainedFocus(e: WindowEvent?) = Unit
-
-                    override fun windowLostFocus(e: WindowEvent?) {
-                        val now = System.currentTimeMillis()
-                        lastFocusLostAtMs.set(now)
-                        lastFocusLostAt = now
-                        debugln {
-                            "[TrayApp] windowLostFocus at $now, " +
-                                "dismissMode=$dismissMode, " +
-                                "thread=${Thread.currentThread().name}"
-                        }
-                        if (Platform.Current == Platform.Windows && now < autoHideEnabledAt) return
-                        // On macOS, don't auto-hide if the window is not on the active Space.
-                        // A Space switch caused the focus loss — let the primary action handle it.
-                        if (Platform.Current == Platform.MacOS) {
-                            val onActiveSpace =
-                                runCatching {
-                                    MacOSWindowManager().isFloatingWindowOnActiveSpace()
-                                }.getOrElse { true }
-                            debugln { "[TrayApp] windowLostFocus: onActiveSpace=$onActiveSpace" }
-                            if (!onActiveSpace) return
-                        }
-                        if (dismissMode == TrayWindowDismissMode.AUTO) requestHideExplicit()
-                    }
-                }
-
-            val macWatcher =
-                if (dismissMode == TrayWindowDismissMode.AUTO && Platform.Current == Platform.MacOS) {
-                    MacOutsideClickWatcher(
-                        windowSupplier = { window },
-                        onOutsideClick = { invokeLater { requestHideExplicit() } },
-                    ).also { it.start() }
-                } else {
-                    null
-                }
-
-            val linuxWatcher =
-                if (dismissMode == TrayWindowDismissMode.AUTO && Platform.Current == Platform.Linux) {
-                    LinuxOutsideClickWatcher(
-                        windowSupplier = { window },
-                        onOutsideClick = { invokeLater { requestHideExplicit() } },
-                    ).also { it.start() }
-                } else {
-                    null
-                }
-
-            val windowsWatcher =
-                if (dismissMode == TrayWindowDismissMode.AUTO && Platform.Current == Platform.Windows) {
-                    WindowsOutsideClickWatcher(
-                        windowSupplier = { window },
-                        onOutsideClick = { invokeLater { requestHideExplicit() } },
-                    ).also { it.start() }
-                } else {
-                    null
-                }
-
-            window.addWindowFocusListener(focusListener)
-            onDispose {
-                window.removeWindowFocusListener(focusListener)
-                macWatcher?.stop()
-                linuxWatcher?.stop()
-                windowsWatcher?.stop()
-                runCatching { WindowVisibilityMonitor.recompute() }
-                windowRef = null
-            }
-        }
-
-        // ---- Persistent (non-disposing) visibility wrapper ----
-        PersistentAnimatedVisibility(
-            visibleState = visibleState,
-            enter = enterTransition,
-            exit = exitTransition,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .graphicsLayer()
-                        // Child can still opt into its own per-node enter/exit if desired:
-                        .animateEnterExit(),
-            ) { content() }
-        }
-    }
-}
-
-// --------------------- Impl: Linux ---------------------
-
-@Composable
-private fun ApplicationScope.TrayAppImplLinux(
-    iconContent: @Composable () -> Unit,
-    iconRenderProperties: IconRenderProperties,
-    tooltip: String,
-    state: TrayAppState?,
-    windowSize: DpSize?,
-    visibleOnStart: Boolean,
-    enterTransition: EnterTransition,
-    exitTransition: ExitTransition,
-    transparent: Boolean,
-    windowsTitle: String,
-    windowIcon: Painter?,
-    undecorated: Boolean,
-    resizable: Boolean,
-    horizontalOffset: Int,
-    verticalOffset: Int,
-    onPreviewKeyEvent: (KeyEvent) -> Boolean,
-    onKeyEvent: (KeyEvent) -> Boolean,
-    menu: (TrayMenuBuilder.() -> Unit)?,
-    content: @Composable DialogWindowScope.() -> Unit,
-) {
     val trayAppState =
         state ?: rememberTrayAppState(
             initialWindowSize = windowSize ?: DpSize(300.dp, 200.dp),
@@ -940,85 +516,165 @@ private fun ApplicationScope.TrayAppImplLinux(
     val isDark = isMenuBarInDarkMode()
     val contentHash = ComposableIconUtils.calculateContentHash(iconRenderProperties, iconContent) + isDark.hashCode()
     val pngIconPath =
-        remember(contentHash) { ComposableIconUtils.renderComposableToPngFile(iconRenderProperties, iconContent) }
-    val windowsIconPath = pngIconPath
+        remember(contentHash) {
+            ComposableIconUtils.renderComposableToPngFile(iconRenderProperties, iconContent)
+        }
+    val windowsIconPath =
+        remember(contentHash) {
+            ComposableIconUtils.renderComposableToIcoFile(iconRenderProperties, iconContent)
+        }
     val menuHash = MenuContentHash.calculateMenuHash(menu)
 
-    var shouldShowWindow by remember { mutableStateOf(false) }
-    var lastPrimaryActionAt by remember { mutableStateOf(0L) }
-    val toggleDebounceMs = 280L
-    var lastShownAt by remember { mutableStateOf(0L) }
-    var lastHiddenAt by remember { mutableStateOf(0L) }
-    val minVisibleDurationMs = 350L
-    val minHiddenDurationMs = 250L
+    // The panel is a standalone native surface; its composition (and the
+    // user's content state) survives hide/show.
+    var popupOnScreen by remember { mutableStateOf(false) }
+    var popupScreenPos by remember { mutableStateOf(WindowPosition.Absolute(0.dp, 0.dp)) }
 
-    val initialPositionForFirstFrame =
-        remember(instanceKey, currentWindowSize, horizontalOffset, verticalOffset) {
-            val w = currentWindowSize.width.value.toInt()
-            val h = currentWindowSize.height.value.toInt()
-            getTrayWindowPositionForInstance(instanceKey, w, h, horizontalOffset, verticalOffset)
-        }
+    // Position pre-computed at click time so the LaunchedEffect can use it immediately.
+    var pendingPosition by remember { mutableStateOf<WindowPosition?>(null) }
 
-    val dialogState = rememberDialogState(position = initialPositionForFirstFrame, size = currentWindowSize)
-    LaunchedEffect(currentWindowSize) { dialogState.size = currentWindowSize }
-
-    // Visibility controller for exit-finish detection; content will NOT be disposed.
+    // Visibility controller for exit-finish observation; content will NOT be disposed.
     val visibleState = remember { MutableTransitionState(false) }
+
+    // Thread-safe timestamps: the tray primary action arrives on a native callback thread.
+    val lastDismissAtMs = remember { AtomicLong(0L) }
+    val lastHiddenAtMs = remember { AtomicLong(0L) }
+    val lastShownAtMs = remember { AtomicLong(0L) }
+    val lastPrimaryActionAtMs = remember { AtomicLong(0L) }
 
     val requestHideExplicit: () -> Unit = {
         val now = System.currentTimeMillis()
-        val sinceShow = now - lastShownAt
+        val sinceShow = now - lastShownAtMs.get()
+        debugln { "[TrayApp] requestHideExplicit called, sinceShow=${sinceShow}ms" }
         if (sinceShow >= minVisibleDurationMs) {
             trayAppState.hide()
-            lastHiddenAt = now
+            lastHiddenAtMs.set(System.currentTimeMillis())
         } else {
-            val wait = (minVisibleDurationMs - sinceShow).coerceAtLeast(0)
+            val wait = minVisibleDurationMs - sinceShow
             CoroutineScope(Dispatchers.IO).launch {
                 delay(wait)
                 trayAppState.hide()
-                lastHiddenAt = System.currentTimeMillis()
+                lastHiddenAtMs.set(System.currentTimeMillis())
             }
         }
     }
 
     val internalPrimaryAction: () -> Unit = action@{
         val now = System.currentTimeMillis()
-        if (now - lastPrimaryActionAt < toggleDebounceMs) return@action
-        lastPrimaryActionAt = now
-        if (isVisible) {
+        val isVisibleNow = trayAppState.isVisible.value
+        val timeSinceLastAction = now - lastPrimaryActionAtMs.get()
+        debugln {
+            "[TrayApp] primaryAction: isVisibleNow=$isVisibleNow, " +
+                "timeSinceLastAction=${timeSinceLastAction}ms"
+        }
+        if (timeSinceLastAction < toggleDebounceMs) {
+            debugln { "[TrayApp] primaryAction -> DEBOUNCED" }
+            return@action
+        }
+        lastPrimaryActionAtMs.set(now)
+        if (isVisibleNow) {
+            debugln { "[TrayApp] primaryAction -> HIDE" }
             requestHideExplicit()
-        } else if (now - lastHiddenAt >= minHiddenDurationMs) {
-            val w = currentWindowSize.width.value.toInt()
-            val h = currentWindowSize.height.value.toInt()
-            dialogState.position = getTrayWindowPositionForInstance(instanceKey, w, h, horizontalOffset, verticalOffset)
+        } else {
+            val hiddenAgo = now - lastHiddenAtMs.get()
+            val dismissedAgo = now - lastDismissAtMs.get()
+            if (hiddenAgo < minHiddenDurationMs) {
+                debugln { "[TrayApp] primaryAction -> SHOW BLOCKED (too soon after hide)" }
+                return@action
+            }
+            // A click on the tray icon while the popup is visible first lands in
+            // the outside-click monitor (which dismisses), then reaches this
+            // callback — without this guard the popup would instantly re-open.
+            if (dismissedAgo < 300) {
+                debugln { "[TrayApp] primaryAction -> SHOW BLOCKED (recent outside-click dismiss)" }
+                return@action
+            }
+            debugln { "[TrayApp] primaryAction -> SHOW" }
+            runCatching {
+                val widthPx = currentWindowSize.width.value.toInt()
+                val heightPx = currentWindowSize.height.value.toInt()
+                pendingPosition =
+                    getTrayWindowPositionForInstance(
+                        instanceKey, widthPx, heightPx, horizontalOffset, verticalOffset,
+                    )
+            }
             trayAppState.show()
         }
     }
 
     LaunchedEffect(isVisible) {
-        // Drive transition state
-        visibleState.targetState = isVisible
-
         if (isVisible) {
-            if (!shouldShowWindow) {
-                shouldShowWindow = true
-                lastShownAt = System.currentTimeMillis()
+            if (!popupOnScreen) {
+                val preComputed = pendingPosition
+                pendingPosition = null
+
+                val position =
+                    if (preComputed != null && preComputed !is WindowPosition.PlatformDefault) {
+                        debugln { "[TrayApp] Using preComputed position: $preComputed" }
+                        preComputed
+                    } else {
+                        // Fallback: poll for position (e.g. visibleOnStart or programmatic show).
+                        debugln { "[TrayApp] No preComputed position, waiting for tray to stabilize..." }
+                        val widthPx = currentWindowSize.width.value.toInt()
+                        val heightPx = currentWindowSize.height.value.toInt()
+
+                        var pos: WindowPosition = WindowPosition.PlatformDefault
+                        if (Platform.Current == Platform.Windows) {
+                            // Windows moves tray icons around after creation, so wait for the
+                            // shell to settle, refresh the cached icon rect, then re-poll.
+                            delay(400)
+                            debugln { "[TrayApp] Re-capturing tray position from native API..." }
+                            WindowsTrayInitializer.refreshPosition(instanceKey)
+                            delay(50)
+                        }
+                        // macOS positions precisely up front (status item rect), so it skips
+                        // the stabilization wait and resolves on the first poll below.
+                        val deadline = System.currentTimeMillis() + 3000
+                        while (pos is WindowPosition.PlatformDefault && System.currentTimeMillis() < deadline) {
+                            pos =
+                                getTrayWindowPositionForInstance(
+                                    instanceKey, widthPx, heightPx, horizontalOffset, verticalOffset,
+                                )
+                            debugln { "[TrayApp] Polled position: $pos" }
+                            if (pos is WindowPosition.PlatformDefault) delay(250)
+                        }
+                        if (pos is WindowPosition.PlatformDefault) {
+                            // Tray never became ready within the deadline — fall back
+                            // to the corner heuristic rather than showing at (0,0).
+                            pos = getTrayWindowPosition(widthPx, heightPx, horizontalOffset, verticalOffset)
+                            debugln { "[TrayApp] Poll deadline expired, corner fallback: $pos" }
+                        }
+                        pos
+                    }
+                if (position is WindowPosition.Absolute) {
+                    popupScreenPos = position
+                }
+                popupOnScreen = true
+                // Let the panel render a first frame at the new position
+                // before the enter animation starts.
+                delay(30)
+                visibleState.targetState = true
+                debugln { "[TrayApp] Popup now on screen at $position" }
+                lastShownAtMs.set(System.currentTimeMillis())
             }
         } else {
-            if (shouldShowWindow) {
+            if (popupOnScreen) {
+                // Play the exit animation, then hide the panel.
+                visibleState.targetState = false
                 snapshotFlow { visibleState.isIdle && !visibleState.currentState }.first { it }
-                shouldShowWindow = false
-                lastHiddenAt = System.currentTimeMillis()
+                popupOnScreen = false
+                lastHiddenAtMs.set(System.currentTimeMillis())
             }
         }
     }
 
-    // Re-anchor when visible and size/offset changes
-    LaunchedEffect(currentWindowSize, horizontalOffset, verticalOffset, shouldShowWindow) {
-        if (shouldShowWindow) {
+    // Re-anchor while visible when the popup size or offsets change.
+    LaunchedEffect(currentWindowSize, horizontalOffset, verticalOffset) {
+        if (popupOnScreen) {
             val w = currentWindowSize.width.value.toInt()
             val h = currentWindowSize.height.value.toInt()
-            dialogState.position = getTrayWindowPositionForInstance(instanceKey, w, h, horizontalOffset, verticalOffset)
+            val pos = getTrayWindowPositionForInstance(instanceKey, w, h, horizontalOffset, verticalOffset)
+            if (pos is WindowPosition.Absolute) popupScreenPos = pos
         }
     }
 
@@ -1028,51 +684,240 @@ private fun ApplicationScope.TrayAppImplLinux(
 
     DisposableEffect(Unit) { onDispose { tray.dispose() } }
 
-    DialogWindow(
-        onCloseRequest = { requestHideExplicit() },
-        title = windowsTitle,
-        icon = windowIcon,
-        undecorated = undecorated,
-        resizable = resizable,
-        focusable = shouldShowWindow,
-        alwaysOnTop = true,
-        transparent = transparent,
-        visible = shouldShowWindow,
-        state = dialogState,
+    TaoStandalonePopup(
+        visible = popupOnScreen,
+        position = popupScreenPos,
+        size = currentWindowSize,
+        focusable = true,
+        onOutsideClick = {
+            // The monitor is process-wide: ignore clicks while already hidden.
+            if (trayAppState.isVisible.value) {
+                lastDismissAtMs.set(System.currentTimeMillis())
+                debugln { "[TrayApp] outside click dismiss, dismissMode=$dismissMode" }
+                if (dismissMode == TrayWindowDismissMode.AUTO) requestHideExplicit()
+            }
+        },
         onPreviewKeyEvent = onPreviewKeyEvent,
         onKeyEvent = onKeyEvent,
     ) {
-        DisposableEffect(shouldShowWindow, dismissMode) {
-            if (!shouldShowWindow) return@DisposableEffect onDispose { }
+        Box(Modifier.fillMaxSize()) {
+            // ---- Persistent (non-disposing) visibility wrapper ----
+            PersistentAnimatedVisibility(
+                visibleState = visibleState,
+                enter = enterTransition,
+                exit = exitTransition,
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer()
+                            // Child can still opt into its own per-node enter/exit if desired:
+                            .animateEnterExit(),
+                ) { content() }
+            }
+        }
+    }
+}
 
+// --------------------- Impl: opaque window (Linux) ---------------------
+
+@Suppress("CyclomaticComplexMethod", "LongMethod")
+@Composable
+private fun NucleusApplicationScope.TrayAppImplWindow(
+    iconContent: @Composable () -> Unit,
+    iconRenderProperties: IconRenderProperties,
+    tooltip: String,
+    state: TrayAppState?,
+    windowSize: DpSize?,
+    visibleOnStart: Boolean,
+    enterTransition: EnterTransition,
+    exitTransition: ExitTransition,
+    windowsTitle: String,
+    windowIcon: Painter?,
+    undecorated: Boolean,
+    resizable: Boolean,
+    horizontalOffset: Int,
+    verticalOffset: Int,
+    onPreviewKeyEvent: (KeyEvent) -> Boolean,
+    onKeyEvent: (KeyEvent) -> Boolean,
+    menu: (TrayMenuBuilder.() -> Unit)?,
+    content: @Composable () -> Unit,
+) {
+    val toggleDebounceMs = 280L
+    val minVisibleDurationMs = 350L
+    val minHiddenDurationMs = 250L
+
+    val trayAppState =
+        state ?: rememberTrayAppState(
+            initialWindowSize = windowSize ?: DpSize(300.dp, 200.dp),
+            initiallyVisible = visibleOnStart,
+            initialDismissMode = TrayWindowDismissMode.AUTO,
+        )
+    val isVisible by trayAppState.isVisible.collectAsState()
+    val currentWindowSize by trayAppState.windowSize.collectAsState()
+    val dismissMode by trayAppState.dismissMode.collectAsState()
+
+    val tray = remember { NativeTray() }
+    val instanceKey = remember { tray.instanceKey() }
+
+    val isDark = isMenuBarInDarkMode()
+    val contentHash = ComposableIconUtils.calculateContentHash(iconRenderProperties, iconContent) + isDark.hashCode()
+    val pngIconPath =
+        remember(contentHash) {
+            ComposableIconUtils.renderComposableToPngFile(iconRenderProperties, iconContent)
+        }
+    val windowsIconPath = pngIconPath
+    val menuHash = MenuContentHash.calculateMenuHash(menu)
+
+    var shouldShowWindow by remember { mutableStateOf(false) }
+
+    // Position pre-computed at click time so the LaunchedEffect can use it immediately.
+    var pendingPosition by remember { mutableStateOf<WindowPosition?>(null) }
+
+    val windowState =
+        rememberWindowState(
+            size = currentWindowSize,
+            position =
+                getTrayWindowPositionForInstance(
+                    instanceKey,
+                    currentWindowSize.width.value.toInt(),
+                    currentWindowSize.height.value.toInt(),
+                    horizontalOffset,
+                    verticalOffset,
+                ),
+        )
+    LaunchedEffect(currentWindowSize) { windowState.size = currentWindowSize }
+
+    // Visibility controller for exit-finish observation; content will NOT be disposed.
+    val visibleState = remember { MutableTransitionState(false) }
+
+    val lastHiddenAtMs = remember { AtomicLong(0L) }
+    val lastShownAtMs = remember { AtomicLong(0L) }
+    val lastPrimaryActionAtMs = remember { AtomicLong(0L) }
+
+    val requestHideExplicit: () -> Unit = {
+        val now = System.currentTimeMillis()
+        val sinceShow = now - lastShownAtMs.get()
+        if (sinceShow >= minVisibleDurationMs) {
+            trayAppState.hide()
+            lastHiddenAtMs.set(System.currentTimeMillis())
+        } else {
+            val wait = minVisibleDurationMs - sinceShow
+            CoroutineScope(Dispatchers.IO).launch {
+                delay(wait)
+                trayAppState.hide()
+                lastHiddenAtMs.set(System.currentTimeMillis())
+            }
+        }
+    }
+
+    val internalPrimaryAction: () -> Unit = action@{
+        val now = System.currentTimeMillis()
+        if (now - lastPrimaryActionAtMs.get() < toggleDebounceMs) return@action
+        lastPrimaryActionAtMs.set(now)
+        if (trayAppState.isVisible.value) {
+            requestHideExplicit()
+        } else if (now - lastHiddenAtMs.get() >= minHiddenDurationMs) {
             runCatching {
                 val w = currentWindowSize.width.value.toInt()
                 val h = currentWindowSize.height.value.toInt()
-                dialogState.position =
+                pendingPosition =
                     getTrayWindowPositionForInstance(instanceKey, w, h, horizontalOffset, verticalOffset)
             }
+            trayAppState.show()
+        }
+    }
 
-            val linuxWatcher =
-                if (dismissMode == TrayWindowDismissMode.AUTO) {
-                    LinuxOutsideClickWatcher(
-                        windowSupplier = { window },
-                        onOutsideClick = { invokeLater { requestHideExplicit() } },
-                    ).also { it.start() }
-                } else {
-                    null
+    LaunchedEffect(isVisible) {
+        visibleState.targetState = isVisible
+        if (isVisible) {
+            if (!shouldShowWindow) {
+                val preComputed = pendingPosition
+                pendingPosition = null
+                val position =
+                    preComputed
+                        ?: getTrayWindowPositionForInstance(
+                            instanceKey,
+                            currentWindowSize.width.value.toInt(),
+                            currentWindowSize.height.value.toInt(),
+                            horizontalOffset,
+                            verticalOffset,
+                        )
+                windowState.position = position
+                delay(30)
+                shouldShowWindow = true
+                lastShownAtMs.set(System.currentTimeMillis())
+            }
+        } else {
+            if (shouldShowWindow) {
+                snapshotFlow { visibleState.isIdle && !visibleState.currentState }.first { it }
+                shouldShowWindow = false
+                lastHiddenAtMs.set(System.currentTimeMillis())
+            }
+        }
+    }
+
+    // Re-anchor when visible and size/offset changes
+    LaunchedEffect(currentWindowSize, horizontalOffset, verticalOffset, shouldShowWindow) {
+        if (shouldShowWindow) {
+            val w = currentWindowSize.width.value.toInt()
+            val h = currentWindowSize.height.value.toInt()
+            windowState.position =
+                getTrayWindowPositionForInstance(instanceKey, w, h, horizontalOffset, verticalOffset)
+        }
+    }
+
+    LaunchedEffect(pngIconPath, windowsIconPath, tooltip, internalPrimaryAction, menu, contentHash, menuHash) {
+        tray.update(pngIconPath, windowsIconPath, tooltip, internalPrimaryAction, menu)
+    }
+
+    DisposableEffect(Unit) { onDispose { tray.dispose() } }
+
+    DecoratedWindow(
+        onCloseRequest = { requestHideExplicit() },
+        state = windowState,
+        visible = shouldShowWindow,
+        title = windowsTitle,
+        icon = windowIcon,
+        resizable = resizable,
+        focusable = true,
+        alwaysOnTop = true,
+        undecorated = undecorated,
+        onPreviewKeyEvent = onPreviewKeyEvent,
+        onKeyEvent = onKeyEvent,
+    ) {
+        val window = nucleusWindow
+
+        // Give the position code access to the popup's TaoWindow (needed by
+        // the GDK-backed work-area queries on Linux).
+        DisposableEffect(window) {
+            TrayScreenGeometry.taoWindowProvider = { window.unsafe.taoWindow }
+            onDispose { TrayScreenGeometry.taoWindowProvider = null }
+        }
+
+        // On show: raise + focus so focus-loss dismissal works.
+        LaunchedEffect(shouldShowWindow) {
+            if (!shouldShowWindow) return@LaunchedEffect
+            runCatching {
+                window.toFront()
+                window.requestFocus()
+            }
+        }
+
+        // Auto-hide on focus loss (edge-triggered: only after focus was gained).
+        LaunchedEffect(Unit) {
+            var hadFocus = false
+            window.focusFlow.collect { focused ->
+                if (focused) {
+                    hadFocus = true
+                    return@collect
                 }
-
-            window.addWindowFocusListener(
-                object : WindowFocusListener {
-                    override fun windowGainedFocus(e: WindowEvent?) = Unit
-
-                    override fun windowLostFocus(e: WindowEvent?) {
-                        if (dismissMode == TrayWindowDismissMode.AUTO) requestHideExplicit()
-                    }
-                },
-            )
-
-            onDispose { linuxWatcher?.stop() }
+                if (!hadFocus) return@collect
+                hadFocus = false
+                if (!shouldShowWindow) return@collect
+                if (dismissMode == TrayWindowDismissMode.AUTO) requestHideExplicit()
+            }
         }
 
         // ---- Persistent (non-disposing) visibility wrapper ----
