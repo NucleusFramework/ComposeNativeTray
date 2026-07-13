@@ -33,7 +33,7 @@ import org.jetbrains.compose.resources.painterResource
 @OptIn(ExperimentalTrayAppApi::class)
 fun main() {
     allowComposeNativeTrayLogging = true
-    nucleusApplication {
+    nucleusApplication(dockIconFollowsWindows = true) {
         var isWindowVisible by remember { mutableStateOf(true) }
         val coroutineScope = rememberCoroutineScope()
 
