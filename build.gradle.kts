@@ -11,7 +11,7 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
-group = "com.kdroid.composenativetray"
+group = "dev.nucleusframework"
 val ref = System.getenv("GITHUB_REF") ?: ""
 val version =
     if (ref.startsWith("refs/tags/")) {
@@ -159,7 +159,7 @@ subprojects {
 
 mavenPublishing {
     coordinates(
-        groupId = "io.github.kdroidfilter",
+        groupId = "dev.nucleusframework",
         artifactId = "composenativetray",
         version = version,
     )
@@ -173,25 +173,27 @@ mavenPublishing {
                 "with various options in a Kotlin DSL-style syntax.",
         )
         inceptionYear.set("2024")
-        url.set("https://github.com/kdroidFilter/ComposeNativeTray")
+        url.set("https://github.com/NucleusFramework/ComposeNativeTray")
 
         licenses {
             license {
-                name.set("MIT")
+                name.set("MIT License")
                 url.set("https://opensource.org/licenses/MIT")
             }
         }
 
         developers {
             developer {
-                id.set("kdroidfilter")
-                name.set("Elyahou Hadass")
-                email.set("elyahou.hadass@gmail.com")
+                id.set("nucleusframework")
+                name.set("NucleusFramework")
+                url.set("https://github.com/NucleusFramework")
             }
         }
 
         scm {
-            url.set("https://github.com/kdroidFilter/ComposeNativeTray")
+            url.set("https://github.com/NucleusFramework/ComposeNativeTray")
+            connection.set("scm:git:git://github.com/NucleusFramework/ComposeNativeTray.git")
+            developerConnection.set("scm:git:ssh://git@github.com/NucleusFramework/ComposeNativeTray.git")
         }
     }
 

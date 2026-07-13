@@ -4,13 +4,13 @@
   <img src="screenshots/logo.png" alt="logo">
 </p>
 <p align="center">
-  <a href="https://central.sonatype.com/artifact/io.github.kdroidfilter/composenativetray"><img src="https://img.shields.io/maven-central/v/io.github.kdroidfilter/composenativetray" alt="Maven Central"></a>
+  <a href="https://central.sonatype.com/artifact/dev.nucleusframework/composenativetray"><img src="https://img.shields.io/maven-central/v/dev.nucleusframework/composenativetray" alt="Maven Central"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://github.com/kdroidFilter/ComposeNativeTray"><img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey.svg" alt="Platform"></a>
-  <a href="https://github.com/kdroidFilter/ComposeNativeTray/commits/main"><img src="https://img.shields.io/github/last-commit/kdroidFilter/ComposeNativeTray" alt="Last Commit"></a>
-  <a href="https://kdroidfilter.github.io/ComposeNativeTray/"><img src="https://img.shields.io/badge/docs-Dokka-blue.svg" alt="Documentation"></a>
-  <a href="https://github.com/kdroidFilter/ComposeNativeTray/issues"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions Welcome"></a>
-  <a href="https://github.com/kdroidFilter/ComposeNativeTray/actions"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build Passing"></a>
+  <a href="https://github.com/NucleusFramework/ComposeNativeTray"><img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey.svg" alt="Platform"></a>
+  <a href="https://github.com/NucleusFramework/ComposeNativeTray/commits/main"><img src="https://img.shields.io/github/last-commit/NucleusFramework/ComposeNativeTray" alt="Last Commit"></a>
+  <a href="https://nucleusframework.github.io/ComposeNativeTray/"><img src="https://img.shields.io/badge/docs-Dokka-blue.svg" alt="Documentation"></a>
+  <a href="https://github.com/NucleusFramework/ComposeNativeTray/issues"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions Welcome"></a>
+  <a href="https://github.com/NucleusFramework/ComposeNativeTray/actions"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build Passing"></a>
 </p>
 
 ## 📖 Introduction
@@ -95,7 +95,7 @@ Add the dependency to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-  implementation("io.github.kdroidfilter:composenativetray:<version>")
+  implementation("dev.nucleusframework:composenativetray:<version>")
 }
 ```
 
