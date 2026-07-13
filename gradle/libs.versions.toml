@@ -6,7 +6,7 @@ compose = "1.11.1"
 detekt = "1.23.8"
 ktlint = "12.1.2"
 nucleus = "2.0.3"
-nucleus-plugin = "2.0.3"
+nucleus-plugin = "2.0.4"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
