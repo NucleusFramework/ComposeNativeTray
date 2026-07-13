@@ -3,7 +3,6 @@ package dev.nucleusframework.composenativetray.tray.api
 /**
  * Defines how the tray window should be dismissed (hidden)
  */
-@ExperimentalTrayAppApi
 enum class TrayWindowDismissMode {
     /**
      * The window automatically hides when it loses focus or when clicking outside.
