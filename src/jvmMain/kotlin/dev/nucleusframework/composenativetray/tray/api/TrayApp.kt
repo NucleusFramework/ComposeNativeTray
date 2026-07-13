@@ -1,5 +1,4 @@
 @file:OptIn(
-    ExperimentalTrayAppApi::class,
     ExperimentalTransitionApi::class,
     InternalAnimationApi::class,
 )
@@ -51,6 +50,7 @@ import dev.nucleusframework.composenativetray.utils.MenuContentHash
 import dev.nucleusframework.composenativetray.utils.PersistentAnimatedVisibility
 import dev.nucleusframework.composenativetray.utils.TrayScreenGeometry
 import dev.nucleusframework.composenativetray.utils.debugln
+import dev.nucleusframework.composenativetray.utils.errorln
 import dev.nucleusframework.composenativetray.utils.getTrayWindowPosition
 import dev.nucleusframework.composenativetray.utils.getTrayWindowPositionForInstance
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
@@ -123,7 +123,6 @@ private val defaultVerticalOffset =
 
 // --------------------- Public API (overloads) ---------------------
 
-@ExperimentalTrayAppApi
 @Composable
 fun NucleusApplicationScope.TrayApp(
     icon: ImageVector,
@@ -179,7 +178,6 @@ fun NucleusApplicationScope.TrayApp(
     )
 }
 
-@ExperimentalTrayAppApi
 @Composable
 fun NucleusApplicationScope.TrayApp(
     icon: Painter,
@@ -227,7 +225,6 @@ fun NucleusApplicationScope.TrayApp(
 }
 
 /** Painter on Windows, ImageVector on macOS/Linux */
-@ExperimentalTrayAppApi
 @Composable
 fun NucleusApplicationScope.TrayApp(
     windowsIcon: Painter,
@@ -297,7 +294,6 @@ fun NucleusApplicationScope.TrayApp(
     }
 }
 
-@ExperimentalTrayAppApi
 @Composable
 fun NucleusApplicationScope.TrayApp(
     icon: DrawableResource,
@@ -341,7 +337,6 @@ fun NucleusApplicationScope.TrayApp(
     )
 }
 
-@ExperimentalTrayAppApi
 @Composable
 fun NucleusApplicationScope.TrayApp(
     windowsIcon: DrawableResource,
@@ -414,9 +409,9 @@ fun NucleusApplicationScope.TrayApp(
 // --------------------- Core implementation (Tao backend only) ---------------------
 
 /**
- * Tray icon + anchored popup. Runs exclusively on the Nucleus Tao backend —
- * call it inside `nucleusApplication(backend = NucleusBackend.Tao)` (or
- * `Auto` with `decorated-window-tao` on the classpath).
+ * Tray icon + anchored popup. Runs exclusively on the Nucleus Tao backend,
+ * which the `Auto` backend selects automatically once the
+ * `decorated-window-tao` module is on the classpath.
  *
  * On Windows + macOS the popup body is hosted in a standalone per-pixel
  * transparent, non-activating native panel — no backing window exists anywhere
@@ -424,7 +419,6 @@ fun NucleusApplicationScope.TrayApp(
  * popup is a regular undecorated Tao window (opaque): no cross-WM transparency
  * equivalent exists.
  */
-@ExperimentalTrayAppApi
 @Composable
 fun NucleusApplicationScope.TrayApp(
     iconContent: @Composable () -> Unit,
@@ -446,10 +440,13 @@ fun NucleusApplicationScope.TrayApp(
     menu: (TrayMenuBuilder.() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    require(backend == NucleusBackend.Tao) {
-        "TrayApp requires the Tao window backend. Launch with " +
-            "nucleusApplication(backend = NucleusBackend.Tao) and ship the " +
-            "nucleus.decorated-window-tao module."
+    if (backend != NucleusBackend.Tao) {
+        errorln {
+            "TrayApp requires the Tao window backend. Launch with " +
+                "nucleusApplication() and ship the " +
+                "nucleus.decorated-window-tao module."
+        }
+        return
     }
 
     // Linux gates on runtime availability: the panel is a raw X11 window,

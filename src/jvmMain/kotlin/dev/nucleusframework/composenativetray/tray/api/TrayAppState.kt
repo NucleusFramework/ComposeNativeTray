@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
  * State holder for TrayApp that provides programmatic control over the tray window
  * and observability of its state changes, including window dismiss behavior.
  */
-@ExperimentalTrayAppApi
 class TrayAppState(
     initialWindowSize: DpSize = DpSize(300.dp, 200.dp),
     initiallyVisible: Boolean = false,
@@ -87,7 +86,6 @@ class TrayAppState(
 }
 
 /** Creates and remembers a TrayAppState instance */
-@ExperimentalTrayAppApi
 @Composable
 fun rememberTrayAppState(
     initialWindowSize: DpSize = DpSize(300.dp, 200.dp),

@@ -591,7 +591,6 @@ Add the following to your ProGuard rules file:
 ## Quick Start (minimal)
 
 ```kotlin
-@OptIn(ExperimentalTrayAppApi::class)
 application {
     val trayAppState = rememberTrayAppState(
         initialWindowSize = DpSize(300.dp, 420.dp),

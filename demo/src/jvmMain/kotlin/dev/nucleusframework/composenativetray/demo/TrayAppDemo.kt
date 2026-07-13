@@ -19,7 +19,6 @@ import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import dev.nucleusframework.application.SingleInstanceRestoreEffect
 import dev.nucleusframework.application.nucleusApplication
-import dev.nucleusframework.composenativetray.tray.api.ExperimentalTrayAppApi
 import dev.nucleusframework.composenativetray.tray.api.TrayApp
 import dev.nucleusframework.composenativetray.tray.api.TrayWindowDismissMode
 import dev.nucleusframework.composenativetray.tray.api.rememberTrayAppState
@@ -30,7 +29,6 @@ import dev.nucleusframework.window.material.MaterialTitleBar
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
-@OptIn(ExperimentalTrayAppApi::class)
 fun main() {
     allowComposeNativeTrayLogging = true
     nucleusApplication(dockIconFollowsWindows = true) {
