@@ -1,5 +1,6 @@
 package dev.nucleusframework.composenativetray.tray.impl
 
+import dev.nucleusframework.composenativetray.lib.mac.MacNativeBridge
 import dev.nucleusframework.composenativetray.lib.mac.MacTrayManager
 import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
 import dev.nucleusframework.composenativetray.menu.impl.MacTrayMenuBuilderImpl
@@ -17,6 +18,32 @@ object MacTrayInitializer {
 
     @Synchronized
     internal fun getNativeTrayHandle(id: String): Long = trayManagers[id]?.getNativeTrayHandle() ?: 0L
+
+    // Status-item queries used by the composenativetray-app module to place the TrayApp popup,
+    // wrapping the internal JNI bridge so it stays out of the public surface.
+
+    /** Global status-item position in physical pixels; `false` if not precisely available. */
+    fun statusItemPosition(outXY: IntArray): Boolean =
+        runCatching { MacNativeBridge.nativeGetStatusItemPosition(outXY) != 0 }.getOrDefault(false)
+
+    /** Per-instance status-item position in physical pixels; `false` if the tray/handle isn't ready. */
+    @Synchronized
+    fun statusItemPositionFor(
+        id: String,
+        outXY: IntArray,
+    ): Boolean {
+        val handle = getNativeTrayHandle(id)
+        if (handle == 0L) return false
+        return runCatching { MacNativeBridge.nativeGetStatusItemPositionFor(handle, outXY) != 0 }.getOrDefault(false)
+    }
+
+    /** Per-instance status-item screen region ("top-left" | "top-right" | …), or `null` if unavailable. */
+    @Synchronized
+    fun statusItemRegionFor(id: String): String? {
+        val handle = getNativeTrayHandle(id)
+        if (handle == 0L) return null
+        return runCatching { MacNativeBridge.nativeGetStatusItemRegionFor(handle) }.getOrNull()
+    }
 
     @Synchronized
     fun initialize(

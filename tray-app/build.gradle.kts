@@ -40,7 +40,8 @@ kotlin {
             implementation(compose.components.resources)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.nucleus.core.runtime)
-            implementation(libs.nucleus.application)
+            // api: NucleusApplicationScope is the receiver type of the public TrayApp API.
+            api(libs.nucleus.application)
             implementation(libs.nucleus.decorated.window.tao)
         }
     }

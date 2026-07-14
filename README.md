@@ -463,28 +463,26 @@ nucleusApplication {
 
 ### 📍 Position Detection
 
-Precisely position your windows relative to the system tray icon:
+`getTrayPosition()` (in the core artifact) tells you which screen corner the tray icon sits in:
 
 ```kotlin
-val windowWidth = 800
-val windowHeight = 600
-val windowPosition = getTrayWindowPosition(windowWidth, windowHeight)
-
-Window(
-  state = rememberWindowState(
-    width = windowWidth.dp,
-    height = windowHeight.dp,
-    position = windowPosition
-  )
-) { /* content */ }
+val corner: TrayPosition = getTrayPosition() // TOP_LEFT / TOP_RIGHT / BOTTOM_LEFT / BOTTOM_RIGHT
 ```
 
-**Implementation Details:**
-- **Windows**: Uses the Windows native API to get the exact position
-- **macOS**: Uses the Cocoa API for the position in the menu bar
-- **Linux**: Captures coordinates when clicking on the icon
+- **Windows / macOS**: resolved from the native tray/menu-bar region.
+- **Linux**: uses the desktop-environment convention (no reliable native tray-region API).
 
-The window is automatically horizontally centered on the icon and vertically positioned based on whether the system tray is at the top or bottom of the screen.
+To compute a precise window position anchored to the tray icon, use `getTrayWindowPosition(...)`. Because
+it needs screen geometry (the Tao backend), it lives in the **`composenativetray-app`** artifact
+(package `dev.nucleusframework.composenativetray.trayapp`) — the same one that provides `TrayApp`,
+which uses it internally:
+
+```kotlin
+val windowPosition = getTrayWindowPosition(windowWidth = 800, windowHeight = 600)
+```
+
+The window is horizontally centered on the icon and vertically anchored to the top or bottom of the
+screen depending on where the tray lives. For a ready-made tray + popup window, prefer `TrayApp`.
 
 ### 🌓 Dark Mode Detection
 
@@ -576,8 +574,10 @@ Add the following to your ProGuard rules file:
 > ```kotlin
 > implementation("dev.nucleusframework:composenativetray-app:<version>")
 > ```
-> It requires the Nucleus Tao backend — launch your app with `nucleusApplication { … }`. See the
-> `TrayAppDemo` in the `demo` module for a complete example.
+> It requires the Nucleus Tao backend — launch your app with `nucleusApplication { … }`. `TrayApp`,
+> `TrayAppState`, `rememberTrayAppState` and `TrayWindowDismissMode` live in the
+> `dev.nucleusframework.composenativetray.trayapp` package. See the `TrayAppDemo` in the `demo`
+> module for a complete example.
 
 ---
 
