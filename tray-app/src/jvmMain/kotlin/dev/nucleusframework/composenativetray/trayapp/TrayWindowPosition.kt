@@ -6,8 +6,6 @@ import dev.nucleusframework.composenativetray.tray.impl.MacTrayInitializer
 import dev.nucleusframework.composenativetray.utils.AppIdProvider
 import dev.nucleusframework.composenativetray.utils.TrayClickPoint
 import dev.nucleusframework.composenativetray.utils.TrayClickTracker
-import dev.nucleusframework.composenativetray.utils.TrayPosition
-import dev.nucleusframework.composenativetray.utils.getTrayPosition
 import dev.nucleusframework.core.runtime.Platform
 import java.io.File
 import java.util.Properties
@@ -151,7 +149,7 @@ fun getTrayWindowPositionForInstance(
                 val regionStr = MacTrayInitializer.statusItemRegionFor(instanceId)
                 val trayPos =
                     if (regionStr != null) {
-                        macRegionToCorner(regionStr)
+                        getMacTrayPosition(regionStr)
                     } else {
                         val bounds = getScreenBoundsAt(x, y)
                         convertPositionToCorner(x - bounds.x, y - bounds.y, bounds.width, bounds.height)
@@ -201,13 +199,6 @@ internal fun convertPositionToCorner(
         else -> TrayPosition.BOTTOM_LEFT
     }
 }
-
-private fun macRegionToCorner(nativeResult: String?): TrayPosition =
-    when (nativeResult) {
-        "top-left" -> TrayPosition.TOP_LEFT
-        "top-right" -> TrayPosition.TOP_RIGHT
-        else -> TrayPosition.TOP_RIGHT
-    }
 
 @Suppress("UNUSED_PARAMETER")
 private fun getScreenBoundsAt(

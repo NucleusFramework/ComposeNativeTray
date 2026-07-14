@@ -463,7 +463,11 @@ nucleusApplication {
 
 ### 📍 Position Detection
 
-`getTrayPosition()` (in the core artifact) tells you which screen corner the tray icon sits in:
+Tray positioning needs screen geometry (the Tao backend), so these helpers live in the
+**`composenativetray-app`** artifact (package `dev.nucleusframework.composenativetray.trayapp`) —
+the same one that provides `TrayApp`, which uses them internally.
+
+`getTrayPosition()` tells you which screen corner the tray icon sits in:
 
 ```kotlin
 val corner: TrayPosition = getTrayPosition() // TOP_LEFT / TOP_RIGHT / BOTTOM_LEFT / BOTTOM_RIGHT
@@ -472,10 +476,7 @@ val corner: TrayPosition = getTrayPosition() // TOP_LEFT / TOP_RIGHT / BOTTOM_LE
 - **Windows / macOS**: resolved from the native tray/menu-bar region.
 - **Linux**: uses the desktop-environment convention (no reliable native tray-region API).
 
-To compute a precise window position anchored to the tray icon, use `getTrayWindowPosition(...)`. Because
-it needs screen geometry (the Tao backend), it lives in the **`composenativetray-app`** artifact
-(package `dev.nucleusframework.composenativetray.trayapp`) — the same one that provides `TrayApp`,
-which uses it internally:
+`getTrayWindowPosition(...)` computes a precise window position anchored to the tray icon:
 
 ```kotlin
 val windowPosition = getTrayWindowPosition(windowWidth = 800, windowHeight = 600)

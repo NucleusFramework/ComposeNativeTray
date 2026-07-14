@@ -26,6 +26,9 @@ object MacTrayInitializer {
     fun statusItemPosition(outXY: IntArray): Boolean =
         runCatching { MacNativeBridge.nativeGetStatusItemPosition(outXY) != 0 }.getOrDefault(false)
 
+    /** Global status-item screen region ("top-left" | "top-right" | …), or `null` if unavailable. */
+    fun statusItemRegion(): String? = runCatching { MacNativeBridge.nativeGetStatusItemRegion() }.getOrNull()
+
     /** Per-instance status-item position in physical pixels; `false` if the tray/handle isn't ready. */
     @Synchronized
     fun statusItemPositionFor(
