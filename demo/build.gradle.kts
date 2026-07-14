@@ -14,6 +14,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":"))
+            implementation(project(":tray-app"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.desktop.currentOs)

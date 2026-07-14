@@ -47,16 +47,15 @@ import dev.nucleusframework.composenativetray.tray.impl.WindowsTrayInitializer
 import dev.nucleusframework.composenativetray.utils.ComposableIconUtils
 import dev.nucleusframework.composenativetray.utils.IconRenderProperties
 import dev.nucleusframework.composenativetray.utils.MenuContentHash
-import dev.nucleusframework.composenativetray.utils.PersistentAnimatedVisibility
 import dev.nucleusframework.composenativetray.utils.TrayScreenGeometry
-import dev.nucleusframework.composenativetray.utils.debugln
-import dev.nucleusframework.composenativetray.utils.errorln
 import dev.nucleusframework.composenativetray.utils.getTrayWindowPosition
 import dev.nucleusframework.composenativetray.utils.getTrayWindowPositionForInstance
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
 import dev.nucleusframework.core.runtime.LinuxDesktopEnvironment
 import dev.nucleusframework.core.runtime.Platform
+import dev.nucleusframework.window.tao.TaoScreenGeometry
 import dev.nucleusframework.window.tao.TaoStandalonePopup
+import dev.nucleusframework.window.tao.TaoWindow
 import dev.nucleusframework.window.tao.isTaoStandalonePopupAvailable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +65,23 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
+
+// --------------------- Tao-backed screen geometry ---------------------
+
+// The core module's `TrayScreenGeometry` (used by the positioning code and the native tray
+// managers) is windowing-backend agnostic; the tray-app module installs the actual Tao-backed
+// providers here so the `decorated-window-tao` dependency stays out of the core artifact.
+//
+// On Linux the GDK work-area query needs a realized window; the opaque-window impl publishes the
+// popup's TaoWindow through this holder. Windows/macOS resolve the primary monitor from a null
+// window, exactly as before the split.
+private val taoGeometryWindow = AtomicReference<TaoWindow?>(null)
+
+private fun installTaoGeometryProviders() {
+    TrayScreenGeometry.scaleProvider = { TaoScreenGeometry.primaryMonitorScaleFactor(taoGeometryWindow.get()) }
+    TrayScreenGeometry.workAreaPxProvider = { TaoScreenGeometry.primaryMonitorWorkAreaPx(taoGeometryWindow.get()) }
+}
 
 // --------------------- Public API (defaults) ---------------------
 
@@ -448,6 +464,10 @@ fun NucleusApplicationScope.TrayApp(
         }
         return
     }
+
+    // Back the core's windowing-agnostic geometry with the Tao bridge (before any impl composes,
+    // so the initial window position query resolves against real screen bounds).
+    remember { installTaoGeometryProviders() }
 
     // Linux gates on runtime availability: the panel is a raw X11 window,
     // reachable through XWayland on Wayland sessions but absent on rare
@@ -889,8 +909,8 @@ private fun NucleusApplicationScope.TrayAppImplWindow(
         // Give the position code access to the popup's TaoWindow (needed by
         // the GDK-backed work-area queries on Linux).
         DisposableEffect(window) {
-            TrayScreenGeometry.taoWindowProvider = { window.unsafe.taoWindow }
-            onDispose { TrayScreenGeometry.taoWindowProvider = null }
+            taoGeometryWindow.set(window.unsafe.taoWindow)
+            onDispose { taoGeometryWindow.set(null) }
         }
 
         // On show: raise + focus so focus-loss dismissal works.

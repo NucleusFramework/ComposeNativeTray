@@ -39,7 +39,12 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import kotlin.internal.LowPriorityInOverloadResolution
 
-internal class NativeTray {
+/**
+ * Low-level tray engine shared by the `Tray` composables and by `TrayApp` (in the separate
+ * `composenativetray-app` module). Public so the tray-app module can drive it directly; most
+ * callers should use the `Tray` / `TrayApp` composables instead.
+ */
+class NativeTray {
     private val trayScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val os = Platform.Current

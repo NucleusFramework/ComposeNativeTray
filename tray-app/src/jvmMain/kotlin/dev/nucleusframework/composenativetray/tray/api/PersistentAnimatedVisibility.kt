@@ -1,4 +1,4 @@
-package dev.nucleusframework.composenativetray.utils
+package dev.nucleusframework.composenativetray.tray.api
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterExitState

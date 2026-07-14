@@ -95,16 +95,28 @@ Add the dependency to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
+  // System tray icon + menu (lightweight — no windowing backend pulled in)
   implementation("dev.nucleusframework:composenativetray:<version>")
+
+  // Only if you use TrayApp (the tray + anchored popup window API).
+  // Pulls in the Nucleus application / decorated-window-tao backend.
+  implementation("dev.nucleusframework:composenativetray-app:<version>")
 }
 ```
 
+> Since `2.1.0` the library is split in two so apps that only need a tray icon don't pull in the
+> heavier `decorated-window-tao` windowing backend (see
+> [#418](https://github.com/NucleusFramework/ComposeNativeTray/issues/418)). `Tray` and the menu DSL
+> live in `composenativetray`; `TrayApp` lives in `composenativetray-app`. Add the second artifact
+> only when you use `TrayApp`.
+
 ## 🚀 Quick Start
 
-Minimal example to create a system tray icon with menu:
+Minimal example to create a system tray icon with menu. `Tray` runs inside Nucleus'
+`nucleusApplication { … }` (import `dev.nucleusframework.application.nucleusApplication`):
 
 ```kotlin
-application {
+nucleusApplication {
   Tray(
     icon = Icons.Default.Favorite,
     tooltip = "My Application"
@@ -126,8 +138,9 @@ application {
 >
 > Notable demos:
 > - DemoWithDrawableResources.kt – shows using DrawableResource directly for Tray and menu icons
-> - PainterResourceWorkaroundDemo.kt – demonstrates the painterResource variable workaround
+> - DemoWithPainter.kt – demonstrates using a `painterResource` icon
 > - DemoWithoutContextMenu.kt – minimalist tray with primary action only
+> - TrayAppDemo.kt – the full TrayApp (tray + popup window) example
 
 ## 📚 Usage Guide
 
@@ -307,7 +320,7 @@ See demo/DemoWithDrawableResources.kt for a complete example.
 When using `painterResource` with menu items, declare it in the composable context:
 
 ```kotlin
-application {
+nucleusApplication {
   val advancedIcon = painterResource(Res.drawable.advanced) // ✅ Correct
   
   Tray(/* config */) {
@@ -342,7 +355,7 @@ if (!isWindowVisible) {
 }
 
 // Example 2: Fully reactive menu
-application {
+nucleusApplication {
   var darkMode by remember { mutableStateOf(false) }
   var showAdvancedOptions by remember { mutableStateOf(false) }
   var notificationsEnabled by remember { mutableStateOf(true) }
@@ -411,59 +424,42 @@ The single instance manager combined with the primary action (left-click) is par
 - Preserving the current state of the application during restoration
 - Offering behavior similar to native system applications
 
-Implementation example with `SingleInstanceManager` (provided by Nucleus):
+Single instance is **enabled by default** in `nucleusApplication`; pass `enableSingleInstance = false`
+to opt out. When a second launch is detected, the already-running instance is notified through
+`SingleInstanceRestoreEffect` — restore your window (or re-open the tray popup) there instead of
+starting a new process:
 
 ```kotlin
-import dev.nucleusframework.core.runtime.SingleInstanceManager
+import dev.nucleusframework.application.SingleInstanceRestoreEffect
 
-var isWindowVisible by remember { mutableStateOf(true) }
+nucleusApplication(enableSingleInstance = true) { // true is the default
+  var isWindowVisible by remember { mutableStateOf(true) }
 
-val isSingleInstance = SingleInstanceManager.isSingleInstance(
-  onRestoreRequest = {
-    isWindowVisible = true  // Restore the existing window
+  // Runs in the already-running instance each time the app is launched again.
+  SingleInstanceRestoreEffect {
+    isWindowVisible = true // bring the existing window / tray popup back
   }
-)
 
-if (!isSingleInstance) {
-  exitApplication()
-  return@application
+  // ... Tray / TrayApp / windows
 }
 ```
 
-#### Passing data to the main instance
+See `TrayAppDemo.kt` for a working example (a second launch re-opens the tray popup).
 
-In some cases, you may want to pass some data to the main instance, e.g. pass a deeplink,
-that new instance got in the arguments of the `main` function from OS.
+#### Deep links
 
-For this purpose you can use optional `onRestoreFileCreated` handler to write required data to the special file,
-that will be later accessible to read in the `onRestoreRequest` handler of the main instance.
-
-Both handlers have the `Path` as a receiver, so you can do any read/write operations on it.
+To react to a deep link the OS hands to the app (including one that arrives on a second launch while
+single instance is enabled), register a handler on the application scope:
 
 ```kotlin
-SingleInstanceManager.isSingleInstance(
-    onRestoreFileCreated = {
-        args.firstOrNull()?.let(::writeText)
-    },
-    onRestoreRequest = {
-        log("Restored with arg: '${readText()}'")
-        // restore window/etc.
-    }
-)
+nucleusApplication {
+  onDeepLink { uri ->
+    // handle the incoming URI (navigate, restore state, …)
+  }
+
+  // ... Tray / TrayApp / windows
+}
 ```
-
-#### Custom Configuration
-
-For finer control, configure the `SingleInstanceManager`:
-
-```kotlin
-SingleInstanceManager.configuration = Configuration(
-  lockFilesDir = Paths.get("path/to/your/app/data/dir/single_instance_manager"),
-  appIdentifier = "app_id"
-)
-```
-
-This allows limiting the scope of the single instance to a specific directory or identifying different versions of your application.
 
 ### 📍 Position Detection
 
@@ -575,6 +571,14 @@ Add the following to your ProGuard rules file:
 
 **Works on Windows, macOS, and Linux.** Smooth fade animations, smart positioning near the tray, and a simple API so you stay productive.
 
+> **📦 Dependency:** `TrayApp` lives in a separate artifact so basic-tray users don't pull in the
+> windowing backend. Add it in addition to the core:
+> ```kotlin
+> implementation("dev.nucleusframework:composenativetray-app:<version>")
+> ```
+> It requires the Nucleus Tao backend — launch your app with `nucleusApplication { … }`. See the
+> `TrayAppDemo` in the `demo` module for a complete example.
+
 ---
 
 ## Why you’ll like it
@@ -591,7 +595,7 @@ Add the following to your ProGuard rules file:
 ## Quick Start (minimal)
 
 ```kotlin
-application {
+nucleusApplication {
     val trayAppState = rememberTrayAppState(
         initialWindowSize = DpSize(300.dp, 420.dp),
         initiallyVisible = true // default is false
@@ -604,7 +608,6 @@ application {
         tooltip = "My Tray App",          // required
 
         // Optional visual controls (defaults shown below)
-        transparent = true,               // default = true
         undecorated = true,               // default = true
         resizable = false,                // default = false
         windowsTitle = "My Tray Popup",   // default = "" — recommended (esp. on Linux & when undecorated=false)
