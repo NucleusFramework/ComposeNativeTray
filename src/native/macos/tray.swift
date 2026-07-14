@@ -51,13 +51,11 @@ private class MenuDelegate: NSObject, NSMenuDelegate {
         guard let ctx = contexts[trayPtr] else { return }
 
         if event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
-            if let menu = ctx.contextMenu {
+            if let menu = ctx.statusItem.menu != nil ? ctx.statusItem.menu : ctx.contextMenu {
                 ctx.menuOpenedCallback?(trayPtr)
-                let menuLocation = NSPoint(
-                    x: sender.frame.minX,
-                    y: sender.frame.minY - 5
-                )
-                menu.popUp(positioning: nil, at: menuLocation, in: sender)
+                ctx.statusItem.menu = menu
+                sender.performClick(nil)
+                ctx.statusItem.menu = nil
             }
         } else if event.type == .leftMouseUp {
             let callbackPtr = trayPtr.advanced(by: 24)
