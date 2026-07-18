@@ -87,5 +87,9 @@ mavenPublishing {
     }
 
     publishToMavenCentral()
-    signAllPublications()
+    // Sign only when the CI-provided in-memory key is present, so
+    // `publishToMavenLocal` works locally without a signatory.
+    if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+        signAllPublications()
+    }
 }
