@@ -58,6 +58,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import java.util.concurrent.atomic.AtomicLong
@@ -115,6 +116,29 @@ private val defaultVerticalOffset =
                 else -> 0
             }
     }
+
+private const val GC_AFTER_HIDE_DELAY_MS = 1_500L
+
+/**
+ * Trims the heap after the popup leaves the screen. The popup keeps its
+ * composition alive while hidden (so state survives hide/show), which means
+ * garbage from the visible session otherwise lingers for as long as the app
+ * idles in the tray — exactly the footprint users check in the task manager.
+ * Right after the exit animation there is no UI on screen, so the collection
+ * pause is invisible.
+ *
+ * Must be called from the visibility `LaunchedEffect`: reshowing the popup
+ * restarts the effect and cancels the [delay], debouncing rapid toggles for
+ * free. The collection runs off the UI thread so the tray loop only pays the
+ * stop-the-world portion.
+ */
+private suspend fun requestGcWhileHidden() {
+    delay(GC_AFTER_HIDE_DELAY_MS)
+    withContext(Dispatchers.Default) {
+        @Suppress("ExplicitGarbageCollectionCall")
+        System.gc()
+    }
+}
 
 // --------------------- Public API (overloads) ---------------------
 
@@ -656,6 +680,7 @@ private fun TrayAppImplPanel(
                 snapshotFlow { visibleState.isIdle && !visibleState.currentState }.first { it }
                 popupOnScreen = false
                 lastHiddenAtMs.set(System.currentTimeMillis())
+                requestGcWhileHidden()
             }
         }
     }
@@ -846,6 +871,7 @@ private fun NucleusApplicationScope.TrayAppImplWindow(
                 snapshotFlow { visibleState.isIdle && !visibleState.currentState }.first { it }
                 shouldShowWindow = false
                 lastHiddenAtMs.set(System.currentTimeMillis())
+                requestGcWhileHidden()
             }
         }
     }

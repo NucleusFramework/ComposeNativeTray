@@ -92,14 +92,4 @@ internal object WindowsNativeBridge {
     @JvmStatic external fun nativeGetNotificationIconsPosition(outXY: IntArray): Int
 
     @JvmStatic external fun nativeGetNotificationIconsRegion(): String?
-
-    // -- Mouse hook (for outside-click detection) --
-
-    @JvmStatic external fun nativeInstallMouseHook(callback: Runnable): Long
-
-    @JvmStatic external fun nativeRunMouseHookLoop(hookId: Long)
-
-    @JvmStatic external fun nativeStopMouseHook(hookId: Long)
-
-    @JvmStatic external fun nativeGetLastMouseHookClick(outXY: IntArray)
 }
