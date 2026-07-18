@@ -7,7 +7,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -24,8 +23,6 @@ internal class MacTrayManager(
     private val menuItems: MutableList<MenuItem> = mutableListOf()
     private val running = AtomicBoolean(false)
     private val lock = ReentrantLock()
-    private var trayThread: Thread? = null
-    private val initLatch = CountDownLatch(1)
 
     // Coroutine scopes for callback handling
     private var mainScope: CoroutineScope? = null
@@ -146,7 +143,17 @@ internal class MacTrayManager(
         }
     }
 
-    // Start the tray
+    // Start the tray.
+    //
+    // Runs the whole native init synchronously on the calling thread — no
+    // dedicated thread, no latch. `tray_init` hops to the GCD main queue by
+    // itself when called off the macOS main thread, and runs inline when the
+    // caller *is* the main thread (the Nucleus Tao backend composes on it).
+    // The previous design (background thread + `initLatch.await()`) deadlocked
+    // there: the main thread parked on the latch can't drain the main queue,
+    // so the tray thread's `DispatchQueue.main.sync` inside `tray_init` never
+    // ran. No event-pump loop is needed either: status-item events are
+    // delivered by the application's own AppKit run loop.
     fun startTray() {
         lock.withLock {
             if (running.get()) {
@@ -159,54 +166,27 @@ internal class MacTrayManager(
             mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
             ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-            // Create and start the tray thread
-            trayThread =
-                Thread {
-                    try {
-                        // Create tray structure via JNI
-                        trayHandle = MacNativeBridge.nativeCreateTray(iconPath, tooltip)
-                        if (trayHandle == 0L) {
-                            throw IllegalStateException("Failed to allocate native tray struct")
-                        }
-
-                        initializeOnLeftClickCallback()
-                        initializeTrayMenu()
-
-                        val initResult = MacNativeBridge.nativeInitTray(trayHandle)
-                        if (initResult != 0) {
-                            throw IllegalStateException("Failed to initialize tray: $initResult")
-                        }
-
-                        // Set menu-opened callback after init (TrayContext must exist)
-                        initializeOnMenuOpenedCallback()
-
-                        // Signal that initialization is complete
-                        initLatch.countDown()
-
-                        // Run the event loop
-                        while (running.get()) {
-                            val result = MacNativeBridge.nativeLoopTray(0)
-                            if (result != 0) {
-                                break
-                            }
-                            Thread.sleep(100)
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    } finally {
-                        cleanupTray()
-                    }
-                }.apply {
-                    name = "MacTray-Thread"
-                    isDaemon = true
-                    start()
+            try {
+                // Create tray structure via JNI
+                trayHandle = MacNativeBridge.nativeCreateTray(iconPath, tooltip)
+                if (trayHandle == 0L) {
+                    throw IllegalStateException("Failed to allocate native tray struct")
                 }
 
-            // Wait for initialization to complete
-            try {
-                initLatch.await()
-            } catch (e: InterruptedException) {
+                initializeOnLeftClickCallback()
+                initializeTrayMenu()
+
+                val initResult = MacNativeBridge.nativeInitTray(trayHandle)
+                if (initResult != 0) {
+                    throw IllegalStateException("Failed to initialize tray: $initResult")
+                }
+
+                // Set menu-opened callback after init (TrayContext must exist)
+                initializeOnMenuOpenedCallback()
+            } catch (e: Exception) {
                 e.printStackTrace()
+                running.set(false)
+                cleanupTray()
             }
         }
     }
@@ -346,18 +326,7 @@ internal class MacTrayManager(
             }
 
             running.set(false)
-        }
-
-        // Wait for the tray thread to finish
-        trayThread?.let { thread ->
-            try {
-                thread.join(5000) // Wait up to 5 seconds
-                if (thread.isAlive) {
-                    thread.interrupt()
-                }
-            } catch (e: InterruptedException) {
-                e.printStackTrace()
-            }
+            cleanupTray()
         }
 
         // Cancel coroutines
@@ -365,7 +334,6 @@ internal class MacTrayManager(
         ioScope?.cancel()
         mainScope = null
         ioScope = null
-        trayThread = null
     }
 
     fun getNativeTrayHandle(): Long {
