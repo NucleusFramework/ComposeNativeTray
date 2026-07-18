@@ -50,7 +50,7 @@ kotlin {
             implementation(libs.nucleus.core.runtime)
             implementation(libs.nucleus.darkmode.detector)
             api(libs.nucleus.application)
-            implementation(libs.nucleus.decorated.window.tao)
+            // decorated-window-tao moved to the :tray-app module (TrayApp-only); see issue #418.
         }
         jvmTest.dependencies {
             implementation(kotlin("test"))

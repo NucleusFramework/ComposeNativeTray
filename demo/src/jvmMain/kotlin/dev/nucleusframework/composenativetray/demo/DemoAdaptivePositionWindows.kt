@@ -19,8 +19,8 @@ import dev.nucleusframework.composenativetray.tray.api.Tray
 import dev.nucleusframework.composenativetray.utils.ComposeNativeTrayLoggingLevel
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.composenativetray.utils.composeNativeTrayLoggingLevel
-import dev.nucleusframework.composenativetray.utils.getTrayPosition
-import dev.nucleusframework.composenativetray.utils.getTrayWindowPosition
+import dev.nucleusframework.composenativetray.trayapp.getTrayPosition
+import dev.nucleusframework.composenativetray.trayapp.getTrayWindowPosition
 import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
 import dev.nucleusframework.window.NucleusDecoratedWindowTheme
 import dev.nucleusframework.window.TitleBar

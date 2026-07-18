@@ -1,8 +1,6 @@
 package dev.nucleusframework.composenativetray.lib.windows
 
 import dev.nucleusframework.composenativetray.utils.TrayClickTracker
-import dev.nucleusframework.composenativetray.utils.TrayScreenGeometry
-import dev.nucleusframework.composenativetray.utils.convertPositionToCorner
 import dev.nucleusframework.composenativetray.utils.debugln
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -254,26 +252,9 @@ internal class WindowsTrayManager(
             val precise = WindowsNativeBridge.nativeGetNotificationIconsPosition(outXY) != 0
             log("nativeGetNotificationIconsPosition: precise=$precise, rawX=${outXY[0]}, rawY=${outXY[1]}")
             if (precise) {
-                // Native coordinates are in physical pixels; window positioning
-                // works in logical pixels. Convert via the primary monitor scale.
-                val scale = TrayScreenGeometry.scale()
-                val logicalX = (outXY[0] / scale).toInt()
-                val logicalY = (outXY[1] / scale).toInt()
-
-                val screen = TrayScreenGeometry.workAreaLogical()
-                log(
-                    "DPI scale=$scale, logicalX=$logicalX, logicalY=$logicalY, " +
-                        "screenW=${screen.width}, screenH=${screen.height}",
-                )
-                val corner =
-                    convertPositionToCorner(
-                        logicalX - screen.x,
-                        logicalY - screen.y,
-                        screen.width,
-                        screen.height,
-                    )
-                log("Detected corner: $corner")
-                TrayClickTracker.setClickPosition(instanceId, logicalX, logicalY, corner)
+                // Record the raw physical click; composenativetray-app converts to logical and
+                // resolves the corner against the Tao-backed screen geometry it owns.
+                TrayClickTracker.recordClick(instanceId, outXY[0], outXY[1])
                 true
             } else {
                 false

@@ -30,4 +30,5 @@ dependencyResolutionManagement {
     }
 }
 
+include(":tray-app")
 include(":demo")
