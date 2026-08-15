@@ -10,7 +10,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
-import kotlin.test.assumeTrue
 import kotlin.test.fail
 
 /**
@@ -25,7 +24,7 @@ import kotlin.test.fail
 class Issue534ReproTest {
     @Test
     fun `windows denies Files move onto a System load ed WinTray dll`() {
-        assumeTrue(isWindows, "Issue #534 is a Windows DLL-lock bug")
+        if (!isWindows) return
         val published = publishedWinTray()
 
         val dir = Files.createTempDirectory("cnt-534-lock-").toFile()
@@ -53,7 +52,7 @@ class Issue534ReproTest {
 
     @Test
     fun `second jvm with a different WinTray binary must not throw AccessDenied`() {
-        assumeTrue(isWindows, "Issue #534 is a Windows DLL-lock bug")
+        if (!isWindows) return
 
         val java =
             ProcessHandle.current().info().command().orElseThrow {

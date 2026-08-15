@@ -23,9 +23,10 @@ object Issue534ReproMain {
             println("LOAD_OK=$ok")
             System.out.flush()
             if ("--hold" in args) {
-                val stopPath = args.firstOrNull { it.startsWith("--stop-file=") }
-                    ?.removePrefix("--stop-file=")
-                    ?: error("--hold requires --stop-file=<path>")
+                val stopPath =
+                    args.firstOrNull { it.startsWith("--stop-file=") }
+                        ?.removePrefix("--stop-file=")
+                        ?: error("--hold requires --stop-file=<path>")
                 val stopFile = File(stopPath)
                 println("HOLDING")
                 System.out.flush()
