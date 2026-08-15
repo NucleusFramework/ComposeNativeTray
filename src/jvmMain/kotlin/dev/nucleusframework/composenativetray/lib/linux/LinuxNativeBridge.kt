@@ -1,6 +1,6 @@
 package dev.nucleusframework.composenativetray.lib.linux
 
-import dev.nucleusframework.composenativetray.utils.NativeLibraryLoader
+import dev.nucleusframework.core.runtime.NativeLibraryLoader
 
 /**
  * JNI bridge to the native Linux tray library (libLinuxTray.so).
@@ -9,7 +9,11 @@ import dev.nucleusframework.composenativetray.utils.NativeLibraryLoader
  */
 internal object LinuxNativeBridge {
     init {
-        NativeLibraryLoader.load("LinuxTray", LinuxNativeBridge::class.java)
+        NativeLibraryLoader.load(
+            "LinuxTray",
+            LinuxNativeBridge::class.java,
+            resourcePrefix = "/composetray/native",
+        )
     }
 
     // -- Lifecycle ---------------------------------------------------------------
