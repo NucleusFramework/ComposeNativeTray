@@ -1,4 +1,4 @@
-package dev.nucleusframework.composenativetray.utils
+package dev.nucleusframework.composenativetray.trayapp
 
 import dev.nucleusframework.window.tao.TaoScreenGeometry
 import dev.nucleusframework.window.tao.TaoWindow
@@ -11,11 +11,12 @@ internal data class ScreenRect(
 )
 
 /**
- * Screen geometry backed by the Tao windowing backend (no AWT).
+ * Screen geometry backed by the Tao windowing backend. Lives in the tray-app module: it is only
+ * needed to place `TrayApp`'s popup window, and the Tao backend is always present here — so there
+ * is no "no backend" fallback, the geometry is always real.
  *
- * On Linux the underlying GDK queries need a realized window: `TrayApp`
- * registers its popup window through [taoWindowProvider]. Windows/macOS
- * resolve the primary monitor directly.
+ * On Linux the underlying GDK queries need a realized window: `TrayApp` registers its popup window
+ * through [taoWindowProvider]. Windows/macOS resolve the primary monitor directly.
  */
 internal object TrayScreenGeometry {
     @Volatile
@@ -30,9 +31,9 @@ internal object TrayScreenGeometry {
             .coerceAtLeast(1f)
 
     /**
-     * Primary monitor work area (screen minus taskbar/menu bar/panel) in
-     * logical pixels, top-left origin. Falls back to a common resolution when
-     * the native bridge is unavailable so positioning degrades gracefully.
+     * Primary monitor work area (screen minus taskbar/menu bar/panel) in logical pixels, top-left
+     * origin. Only the rare case where the native bridge itself throws degrades to a common
+     * resolution.
      */
     fun workAreaLogical(): ScreenRect {
         val wa = runCatching { TaoScreenGeometry.primaryMonitorWorkAreaPx(taoWindow()) }.getOrNull()

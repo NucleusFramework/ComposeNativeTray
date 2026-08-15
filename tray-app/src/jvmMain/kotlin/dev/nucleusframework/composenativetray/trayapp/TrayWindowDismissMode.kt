@@ -1,4 +1,4 @@
-package dev.nucleusframework.composenativetray.tray.api
+package dev.nucleusframework.composenativetray.trayapp
 
 /**
  * Defines how the tray window should be dismissed (hidden)

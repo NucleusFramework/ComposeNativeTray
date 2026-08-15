@@ -19,9 +19,9 @@ import composenativetray.demo.generated.resources.Res
 import composenativetray.demo.generated.resources.icon
 import dev.nucleusframework.application.SingleInstanceRestoreEffect
 import dev.nucleusframework.application.nucleusApplication
-import dev.nucleusframework.composenativetray.tray.api.TrayApp
-import dev.nucleusframework.composenativetray.tray.api.TrayWindowDismissMode
-import dev.nucleusframework.composenativetray.tray.api.rememberTrayAppState
+import dev.nucleusframework.composenativetray.trayapp.TrayApp
+import dev.nucleusframework.composenativetray.trayapp.TrayWindowDismissMode
+import dev.nucleusframework.composenativetray.trayapp.rememberTrayAppState
 import dev.nucleusframework.composenativetray.utils.allowComposeNativeTrayLogging
 import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
 import dev.nucleusframework.window.material.MaterialDecoratedWindow

@@ -3,7 +3,7 @@
     InternalAnimationApi::class,
 )
 
-package dev.nucleusframework.composenativetray.tray.api
+package dev.nucleusframework.composenativetray.trayapp
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -43,16 +43,11 @@ import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.application.NucleusBackend
 import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
+import dev.nucleusframework.composenativetray.tray.api.NativeTray
 import dev.nucleusframework.composenativetray.tray.impl.WindowsTrayInitializer
 import dev.nucleusframework.composenativetray.utils.ComposableIconUtils
 import dev.nucleusframework.composenativetray.utils.IconRenderProperties
 import dev.nucleusframework.composenativetray.utils.MenuContentHash
-import dev.nucleusframework.composenativetray.utils.PersistentAnimatedVisibility
-import dev.nucleusframework.composenativetray.utils.TrayScreenGeometry
-import dev.nucleusframework.composenativetray.utils.debugln
-import dev.nucleusframework.composenativetray.utils.errorln
-import dev.nucleusframework.composenativetray.utils.getTrayWindowPosition
-import dev.nucleusframework.composenativetray.utils.getTrayWindowPositionForInstance
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
 import dev.nucleusframework.core.runtime.LinuxDesktopEnvironment
 import dev.nucleusframework.core.runtime.Platform

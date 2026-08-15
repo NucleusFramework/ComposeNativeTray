@@ -170,7 +170,7 @@ internal class LinuxTrayManager(
                     try {
                         val xy = IntArray(2)
                         native.nativeGetLastClickXY(trayHandle, xy)
-                        TrayClickTracker.updateClickPosition(xy[0], xy[1])
+                        TrayClickTracker.recordClick(xy[0], xy[1])
                     } catch (_: Throwable) {
                     }
                     onLeftClick?.invoke()

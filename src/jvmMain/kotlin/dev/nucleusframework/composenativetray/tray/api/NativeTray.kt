@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
 import dev.nucleusframework.composenativetray.tray.impl.LinuxTrayInitializer
 import dev.nucleusframework.composenativetray.tray.impl.MacTrayInitializer
@@ -39,7 +38,12 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import kotlin.internal.LowPriorityInOverloadResolution
 
-internal class NativeTray {
+/**
+ * Low-level tray engine shared by the `Tray` composables and by `TrayApp` (in the separate
+ * `composenativetray-app` module). Public so the tray-app module can drive it directly; most
+ * callers should use the `Tray` / `TrayApp` composables instead.
+ */
+class NativeTray {
     private val trayScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val os = Platform.Current
@@ -350,7 +354,7 @@ internal class NativeTray {
     replaceWith = ReplaceWith("Tray(iconContent, tooltip, primaryAction, menuContent)"),
 )
 @Composable
-fun NucleusApplicationScope.Tray(
+fun Tray(
     iconPath: String,
     windowsIconPath: String = iconPath,
     tooltip: String,
@@ -389,7 +393,7 @@ fun NucleusApplicationScope.Tray(
 
 @Composable
 @LowPriorityInOverloadResolution
-fun NucleusApplicationScope.Tray(
+fun Tray(
     iconContent: @Composable () -> Unit,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -431,7 +435,7 @@ fun NucleusApplicationScope.Tray(
 
 @Composable
 @LowPriorityInOverloadResolution
-fun NucleusApplicationScope.Tray(
+fun Tray(
     icon: ImageVector,
     tint: Color? = null,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
@@ -527,7 +531,7 @@ fun NucleusApplicationScope.Tray(
 
 @Composable
 @LowPriorityInOverloadResolution
-fun NucleusApplicationScope.Tray(
+fun Tray(
     icon: Painter,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -583,7 +587,7 @@ fun NucleusApplicationScope.Tray(
  */
 @Composable
 @LowPriorityInOverloadResolution
-fun NucleusApplicationScope.Tray(
+fun Tray(
     windowsIcon: Painter,
     macLinuxIcon: ImageVector,
     tint: Color? = null,
@@ -624,7 +628,7 @@ fun NucleusApplicationScope.Tray(
  */
 @Composable
 @LowPriorityInOverloadResolution
-fun NucleusApplicationScope.Tray(
+fun Tray(
     icon: DrawableResource,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -646,7 +650,7 @@ fun NucleusApplicationScope.Tray(
 
 @Composable
 @LowPriorityInOverloadResolution
-fun NucleusApplicationScope.Tray(
+fun Tray(
     windowsIcon: DrawableResource,
     macLinuxIcon: ImageVector,
     tint: Color? = null,

@@ -1,3 +1,4 @@
+import dev.nucleusframework.desktop.application.dsl.NativeImageMarch
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -14,6 +15,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":"))
+            implementation(project(":tray-app"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.desktop.currentOs)
@@ -49,7 +51,10 @@ nucleus.application {
         javaLanguageVersion = 25
         jvmVendor = JvmVendorSpec.BELLSOFT
         imageName = "composetray-demo"
-        march = providers.gradleProperty("nativeMarch").getOrElse("compatibility")
+        march =
+            providers.gradleProperty("nativeMarch")
+                .map { NativeImageMarch.valueOf(it.uppercase()) }
+                .orElse(NativeImageMarch.COMPATIBILITY)
         buildArgs.addAll(
             "-H:+AddAllCharsets",
             "-Djava.awt.headless=false",

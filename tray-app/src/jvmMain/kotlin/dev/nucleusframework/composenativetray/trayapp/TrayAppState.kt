@@ -1,4 +1,4 @@
-package dev.nucleusframework.composenativetray.tray.api
+package dev.nucleusframework.composenativetray.trayapp
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember

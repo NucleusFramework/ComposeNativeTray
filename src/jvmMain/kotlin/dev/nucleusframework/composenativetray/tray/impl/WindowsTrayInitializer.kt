@@ -1,5 +1,6 @@
 package dev.nucleusframework.composenativetray.tray.impl
 
+import dev.nucleusframework.composenativetray.lib.windows.WindowsNativeBridge
 import dev.nucleusframework.composenativetray.lib.windows.WindowsTrayManager
 import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
 import dev.nucleusframework.composenativetray.menu.impl.WindowsTrayMenuBuilderImpl
@@ -9,6 +10,14 @@ object WindowsTrayInitializer {
 
     // Manage multiple tray managers by ID to allow multiple tray icons
     private val trayManagers: MutableMap<String, WindowsTrayManager> = mutableMapOf()
+
+    /**
+     * Native notification-area region ("top-left" | "top-right" | …), or `null` if unavailable.
+     * Exposed for the composenativetray-app module's tray-corner detection; wraps the internal
+     * JNI bridge so it stays out of the public surface.
+     */
+    fun notificationIconsRegion(): String? =
+        runCatching { WindowsNativeBridge.nativeGetNotificationIconsRegion() }.getOrNull()
 
     @Synchronized
     fun initialize(
