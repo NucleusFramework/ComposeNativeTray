@@ -28,7 +28,7 @@ if [ ! -f "$JNI_INCLUDE/jni.h" ]; then
 fi
 
 mkdir -p "$OUTPUT_DIR/darwin-aarch64"
-mkdir -p "$OUTPUT_DIR/darwin-x86-64"
+mkdir -p "$OUTPUT_DIR/darwin-x64"
 
 build_arch() {
     local ARCH=$1
@@ -66,15 +66,14 @@ build_arch() {
 }
 
 build_arch "arm64"  "arm64-apple-macosx11.0"  "$OUTPUT_DIR/darwin-aarch64"
-build_arch "x86_64" "x86_64-apple-macosx11.0" "$OUTPUT_DIR/darwin-x86-64"
+build_arch "x86_64" "x86_64-apple-macosx11.0" "$OUTPUT_DIR/darwin-x64"
 
-# Invalidate runtime cache (NativeLibraryLoader validates by size only,
-# so a same-size rebuild would serve the stale cached copy)
-for PLATFORM_DIR in darwin-aarch64 darwin-x86-64; do
-    CACHE_FILE="$HOME/.cache/composetray/native/$PLATFORM_DIR/libMacTray.dylib"
-    if [ -f "$CACHE_FILE" ]; then
-        rm -f "$CACHE_FILE"
-        echo "Cleared cached library: $CACHE_FILE"
+# Content-addressed Nucleus cache: evict every copy of this library so a
+# same-size rebuild cannot keep serving the stale fingerprint directory.
+for CACHE_DIR in "$HOME/Library/Caches/nucleus/native" "$HOME/.cache/nucleus/native" "$HOME/.cache/composetray/native"; do
+    if [ -d "$CACHE_DIR" ]; then
+        find "$CACHE_DIR" -name "libMacTray.dylib" -delete
+        echo "Cleared cached library under: $CACHE_DIR"
     fi
 done
 

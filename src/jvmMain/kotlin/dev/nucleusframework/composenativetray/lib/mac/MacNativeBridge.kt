@@ -1,6 +1,6 @@
 package dev.nucleusframework.composenativetray.lib.mac
 
-import dev.nucleusframework.composenativetray.utils.NativeLibraryLoader
+import dev.nucleusframework.core.runtime.NativeLibraryLoader
 
 /**
  * JNI bridge to the native macOS tray library (libMacTray.dylib).
@@ -8,7 +8,12 @@ import dev.nucleusframework.composenativetray.utils.NativeLibraryLoader
  */
 internal object MacNativeBridge {
     private const val LIBRARY_NAME = "MacTray"
-    private val loaded = NativeLibraryLoader.load(LIBRARY_NAME, MacNativeBridge::class.java)
+    private val loaded =
+        NativeLibraryLoader.load(
+            LIBRARY_NAME,
+            MacNativeBridge::class.java,
+            resourcePrefix = "/composetray/native",
+        )
     val isLoaded: Boolean get() = loaded
 
     // ── Tray lifecycle ──────────────────────────────────────────────────

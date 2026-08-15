@@ -16,7 +16,7 @@ endif()
 # Check target architecture
 if(CMAKE_GENERATOR_PLATFORM STREQUAL "x64" OR CMAKE_GENERATOR_PLATFORM STREQUAL "")
     set(TARGET_ARCH "x64")
-    set(OUTPUT_DIR "${BASE_OUTPUT_DIR}/win32-x86-64")
+    set(OUTPUT_DIR "${BASE_OUTPUT_DIR}/win32-x64")
     # Do NOT add /arch:AVX, /arch:AVX2 or higher here. The default x64 baseline is
     # SSE2, which every x86-64 CPU supports. Enabling AVX makes MSVC emit
     # VEX-encoded instructions (e.g. VPXOR) that raise EXCEPTION_ILLEGAL_INSTRUCTION
@@ -25,7 +25,7 @@ if(CMAKE_GENERATOR_PLATFORM STREQUAL "x64" OR CMAKE_GENERATOR_PLATFORM STREQUAL 
     # is found, so a reintroduced /arch flag will be caught.
 elseif(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
     set(TARGET_ARCH "ARM64")
-    set(OUTPUT_DIR "${BASE_OUTPUT_DIR}/win32-arm64")
+    set(OUTPUT_DIR "${BASE_OUTPUT_DIR}/win32-aarch64")
 else()
     message(FATAL_ERROR "Unsupported architecture: ${CMAKE_GENERATOR_PLATFORM}")
 endif()
