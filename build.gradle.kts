@@ -85,7 +85,7 @@ val buildNativeWindows by tasks.registering(Exec::class) {
     group = "build"
     val hasPrebuilt =
         nativeResourceDir
-            .dir("win32-x86-64")
+            .dir("win32-x64")
             .file("WinTray.dll")
             .asFile
             .exists()
@@ -103,7 +103,7 @@ val buildNativeLinux by tasks.registering(Exec::class) {
     group = "build"
     val hasPrebuilt =
         nativeResourceDir
-            .dir("linux-x86-64")
+            .dir("linux-x64")
             .file("libLinuxTray.so")
             .asFile
             .exists()

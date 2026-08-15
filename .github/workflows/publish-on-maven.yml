@@ -26,14 +26,14 @@ jobs:
       - name: Download macOS x86_64 library
         uses: actions/download-artifact@v4
         with:
-          name: native-darwin-x86-64
-          path: src/jvmMain/resources/composetray/native/darwin-x86-64/
+          name: native-darwin-x64
+          path: src/jvmMain/resources/composetray/native/darwin-x64/
 
       - name: Download Linux x86_64 library
         uses: actions/download-artifact@v4
         with:
-          name: native-linux-x86-64
-          path: src/jvmMain/resources/composetray/native/linux-x86-64/
+          name: native-linux-x64
+          path: src/jvmMain/resources/composetray/native/linux-x64/
 
       - name: Download Linux aarch64 library
         uses: actions/download-artifact@v4
@@ -44,24 +44,24 @@ jobs:
       - name: Download Windows x64 library
         uses: actions/download-artifact@v4
         with:
-          name: native-win32-x86-64
-          path: src/jvmMain/resources/composetray/native/win32-x86-64/
+          name: native-win32-x64
+          path: src/jvmMain/resources/composetray/native/win32-x64/
 
       - name: Download Windows ARM64 library
         uses: actions/download-artifact@v4
         with:
-          name: native-win32-arm64
-          path: src/jvmMain/resources/composetray/native/win32-arm64/
+          name: native-win32-aarch64
+          path: src/jvmMain/resources/composetray/native/win32-aarch64/
 
       - name: Verify native libraries
         run: |
           echo "=== Native libraries in resources ==="
           ls -la src/jvmMain/resources/composetray/native/darwin-aarch64/
-          ls -la src/jvmMain/resources/composetray/native/darwin-x86-64/
-          ls -la src/jvmMain/resources/composetray/native/linux-x86-64/
+          ls -la src/jvmMain/resources/composetray/native/darwin-x64/
+          ls -la src/jvmMain/resources/composetray/native/linux-x64/
           ls -la src/jvmMain/resources/composetray/native/linux-aarch64/
-          ls -la src/jvmMain/resources/composetray/native/win32-x86-64/
-          ls -la src/jvmMain/resources/composetray/native/win32-arm64/
+          ls -la src/jvmMain/resources/composetray/native/win32-x64/
+          ls -la src/jvmMain/resources/composetray/native/win32-aarch64/
 
       - name: Set up JDK
         uses: actions/setup-java@v4

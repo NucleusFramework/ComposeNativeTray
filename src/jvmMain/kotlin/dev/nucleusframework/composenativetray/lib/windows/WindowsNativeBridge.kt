@@ -1,6 +1,6 @@
 package dev.nucleusframework.composenativetray.lib.windows
 
-import dev.nucleusframework.composenativetray.utils.NativeLibraryLoader
+import dev.nucleusframework.core.runtime.NativeLibraryLoader
 
 /**
  * JNI bridge to the native Windows tray library (WinTray.dll).
@@ -9,7 +9,11 @@ import dev.nucleusframework.composenativetray.utils.NativeLibraryLoader
  */
 internal object WindowsNativeBridge {
     init {
-        NativeLibraryLoader.load("WinTray", WindowsNativeBridge::class.java)
+        NativeLibraryLoader.load(
+            "WinTray",
+            WindowsNativeBridge::class.java,
+            resourcePrefix = "/composetray/native",
+        )
     }
 
     // -- Tray lifecycle --

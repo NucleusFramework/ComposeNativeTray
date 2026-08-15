@@ -30,14 +30,14 @@ jobs:
       - name: Download macOS x86_64 library
         uses: actions/download-artifact@v4
         with:
-          name: native-darwin-x86-64
-          path: src/jvmMain/resources/composetray/native/darwin-x86-64/
+          name: native-darwin-x64
+          path: src/jvmMain/resources/composetray/native/darwin-x64/
 
       - name: Download Linux x86_64 library
         uses: actions/download-artifact@v4
         with:
-          name: native-linux-x86-64
-          path: src/jvmMain/resources/composetray/native/linux-x86-64/
+          name: native-linux-x64
+          path: src/jvmMain/resources/composetray/native/linux-x64/
 
       - name: Download Linux aarch64 library
         uses: actions/download-artifact@v4
@@ -48,24 +48,24 @@ jobs:
       - name: Download Windows x64 library
         uses: actions/download-artifact@v4
         with:
-          name: native-win32-x86-64
-          path: src/jvmMain/resources/composetray/native/win32-x86-64/
+          name: native-win32-x64
+          path: src/jvmMain/resources/composetray/native/win32-x64/
 
       - name: Download Windows ARM64 library
         uses: actions/download-artifact@v4
         with:
-          name: native-win32-arm64
-          path: src/jvmMain/resources/composetray/native/win32-arm64/
+          name: native-win32-aarch64
+          path: src/jvmMain/resources/composetray/native/win32-aarch64/
 
       - name: Verify native libraries
         run: |
           echo "=== Verifying native libraries ==="
           test -f src/jvmMain/resources/composetray/native/darwin-aarch64/libMacTray.dylib
-          test -f src/jvmMain/resources/composetray/native/darwin-x86-64/libMacTray.dylib
-          test -f src/jvmMain/resources/composetray/native/linux-x86-64/libLinuxTray.so
+          test -f src/jvmMain/resources/composetray/native/darwin-x64/libMacTray.dylib
+          test -f src/jvmMain/resources/composetray/native/linux-x64/libLinuxTray.so
           test -f src/jvmMain/resources/composetray/native/linux-aarch64/libLinuxTray.so
-          test -f src/jvmMain/resources/composetray/native/win32-x86-64/WinTray.dll
-          test -f src/jvmMain/resources/composetray/native/win32-arm64/WinTray.dll
+          test -f src/jvmMain/resources/composetray/native/win32-x64/WinTray.dll
+          test -f src/jvmMain/resources/composetray/native/win32-aarch64/WinTray.dll
           echo "All native libraries present."
 
       - name: Set up JDK

@@ -42,7 +42,7 @@ SDBUS_LIBS=$(pkg-config --libs libsystemd)
 # Detect host architecture
 UNAME_ARCH="$(uname -m)"
 case "$UNAME_ARCH" in
-    x86_64)  ARCH="x86-64" ;;
+    x86_64)  ARCH="x64" ;;
     aarch64) ARCH="aarch64" ;;
     *)       echo "ERROR: Unsupported architecture: $UNAME_ARCH"; exit 1 ;;
 esac
@@ -82,13 +82,15 @@ strip --strip-unneeded "$OUTPUT_DIR/$PLATFORM_DIR/libLinuxTray.so"
 # Clean up object files
 rm -f "$SCRIPT_DIR/sni.o" "$SCRIPT_DIR/jni_bridge.o"
 
-# Invalidate runtime cache (NativeLibraryLoader validates by size only,
-# so a same-size rebuild would serve the stale cached copy)
-CACHE_FILE="$HOME/.cache/composetray/native/$PLATFORM_DIR/libLinuxTray.so"
-if [ -f "$CACHE_FILE" ]; then
-    rm -f "$CACHE_FILE"
-    echo "Cleared cached library: $CACHE_FILE"
-fi
+# Content-addressed Nucleus cache: evict every copy of this library so a
+# same-size rebuild cannot keep serving the stale fingerprint directory.
+CACHE_BASE="${XDG_CACHE_HOME:-$HOME/.cache}"
+for CACHE_DIR in "$CACHE_BASE/nucleus/native" "$CACHE_BASE/composetray/native"; do
+    if [ -d "$CACHE_DIR" ]; then
+        find "$CACHE_DIR" -name "libLinuxTray.so" -delete
+        echo "Cleared cached library under: $CACHE_DIR"
+    fi
+done
 
 echo "Build completed: $OUTPUT_DIR/$PLATFORM_DIR/libLinuxTray.so"
 ls -lh "$OUTPUT_DIR/$PLATFORM_DIR/libLinuxTray.so"

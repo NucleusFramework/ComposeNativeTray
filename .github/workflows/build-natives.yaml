@@ -25,9 +25,9 @@ jobs:
       - name: Verify macOS natives
         run: |
           test -f build/nativeLibs/darwin-aarch64/libMacTray.dylib
-          test -f build/nativeLibs/darwin-x86-64/libMacTray.dylib
+          test -f build/nativeLibs/darwin-x64/libMacTray.dylib
           ls -la build/nativeLibs/darwin-aarch64/
-          ls -la build/nativeLibs/darwin-x86-64/
+          ls -la build/nativeLibs/darwin-x64/
 
       - name: Upload macOS ARM64 library
         uses: actions/upload-artifact@v4
@@ -39,8 +39,8 @@ jobs:
       - name: Upload macOS x86_64 library
         uses: actions/upload-artifact@v4
         with:
-          name: native-darwin-x86-64
-          path: build/nativeLibs/darwin-x86-64/libMacTray.dylib
+          name: native-darwin-x64
+          path: build/nativeLibs/darwin-x64/libMacTray.dylib
           retention-days: 1
 
   build-native-linux:
@@ -49,7 +49,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            arch: x86-64
+            arch: x64
           - os: ubuntu-24.04-arm
             arch: aarch64
     steps:
@@ -106,10 +106,10 @@ jobs:
       - name: Verify Windows natives
         shell: bash
         run: |
-          test -f build/nativeLibs/win32-x86-64/WinTray.dll
-          test -f build/nativeLibs/win32-arm64/WinTray.dll
-          ls -la build/nativeLibs/win32-x86-64/
-          ls -la build/nativeLibs/win32-arm64/
+          test -f build/nativeLibs/win32-x64/WinTray.dll
+          test -f build/nativeLibs/win32-aarch64/WinTray.dll
+          ls -la build/nativeLibs/win32-x64/
+          ls -la build/nativeLibs/win32-aarch64/
 
       # Regression guard for issue #401: WinTray.dll must stay AVX-free so it does
       # not crash with EXCEPTION_ILLEGAL_INSTRUCTION on pre-2011 CPUs (no AVX).
@@ -126,7 +126,7 @@ jobs:
                      Where-Object { $_.FullName -match '\\Hostx64\\x64\\' } | Select-Object -First 1
           if (-not $dumpbin) { throw "dumpbin.exe not found" }
           Write-Host "Using $($dumpbin.FullName)"
-          $disasm = & $dumpbin.FullName /DISASM:NOBYTES "build/nativeLibs/win32-x86-64/WinTray.dll"
+          $disasm = & $dumpbin.FullName /DISASM:NOBYTES "build/nativeLibs/win32-x64/WinTray.dll"
           $avx = $disasm | Select-String -Pattern '^\s+[0-9A-Fa-f]+:\s+v[a-z]' |
                  Where-Object { $_.Line -notmatch '\bv(err|erw)\b' }
           if ($avx) {
@@ -139,13 +139,13 @@ jobs:
       - name: Upload Windows x64 library
         uses: actions/upload-artifact@v4
         with:
-          name: native-win32-x86-64
-          path: build/nativeLibs/win32-x86-64/WinTray.dll
+          name: native-win32-x64
+          path: build/nativeLibs/win32-x64/WinTray.dll
           retention-days: 1
 
       - name: Upload Windows ARM64 library
         uses: actions/upload-artifact@v4
         with:
-          name: native-win32-arm64
-          path: build/nativeLibs/win32-arm64/WinTray.dll
+          name: native-win32-aarch64
+          path: build/nativeLibs/win32-aarch64/WinTray.dll
           retention-days: 1
