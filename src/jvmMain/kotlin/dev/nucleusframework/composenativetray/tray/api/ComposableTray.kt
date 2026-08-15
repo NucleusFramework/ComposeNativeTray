@@ -5,7 +5,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.composenativetray.menu.api.ComposableTrayMenuScope
 import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
 import dev.nucleusframework.composenativetray.menu.impl.RecordingComposableScope
@@ -41,7 +40,7 @@ private fun rememberRecordedMenuContent(
  * hoist a `val icon = painterResource(...)` above `application { … }`.
  */
 @Composable
-fun NucleusApplicationScope.Tray(
+fun Tray(
     icon: Painter,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -61,7 +60,7 @@ fun NucleusApplicationScope.Tray(
 }
 
 @Composable
-fun NucleusApplicationScope.Tray(
+fun Tray(
     icon: ImageVector,
     tint: Color? = null,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
@@ -83,7 +82,7 @@ fun NucleusApplicationScope.Tray(
 }
 
 @Composable
-fun NucleusApplicationScope.Tray(
+fun Tray(
     icon: DrawableResource,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -104,7 +103,7 @@ fun NucleusApplicationScope.Tray(
 }
 
 @Composable
-fun NucleusApplicationScope.Tray(
+fun Tray(
     iconContent: @Composable () -> Unit,
     iconRenderProperties: IconRenderProperties = IconRenderProperties.forCurrentOperatingSystem(),
     tooltip: String,
@@ -127,7 +126,7 @@ fun NucleusApplicationScope.Tray(
  * Polymorphic helper: [Painter] icon on Windows, [ImageVector] on macOS/Linux, composable menu.
  */
 @Composable
-fun NucleusApplicationScope.Tray(
+fun Tray(
     windowsIcon: Painter,
     macLinuxIcon: ImageVector,
     tint: Color? = null,
@@ -151,7 +150,7 @@ fun NucleusApplicationScope.Tray(
 }
 
 @Composable
-fun NucleusApplicationScope.Tray(
+fun Tray(
     windowsIcon: DrawableResource,
     macLinuxIcon: ImageVector,
     tint: Color? = null,

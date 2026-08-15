@@ -107,16 +107,17 @@ dependencies {
 > Since `2.1.0` the library is split in two so apps that only need a tray icon don't pull in the
 > heavier `decorated-window-tao` windowing backend (see
 > [#418](https://github.com/NucleusFramework/ComposeNativeTray/issues/418)). `Tray` and the menu DSL
-> live in `composenativetray`; `TrayApp` lives in `composenativetray-app`. Add the second artifact
-> only when you use `TrayApp`.
+> live in `composenativetray` and work in any Compose Desktop `application { }` — no Nucleus
+> application scope required. `TrayApp` lives in `composenativetray-app` and needs
+> `nucleusApplication { }`. Add the second artifact only when you use `TrayApp`.
 
 ## 🚀 Quick Start
 
-Minimal example to create a system tray icon with menu. `Tray` runs inside Nucleus'
-`nucleusApplication { … }` (import `dev.nucleusframework.application.nucleusApplication`):
+Minimal example to create a system tray icon with menu. `Tray` is a regular composable — it
+works inside Compose Desktop's `application { … }` or Nucleus' `nucleusApplication { … }`:
 
 ```kotlin
-nucleusApplication {
+application {
   Tray(
     icon = Icons.Default.Favorite,
     tooltip = "My Application"
@@ -320,7 +321,7 @@ See demo/DemoWithDrawableResources.kt for a complete example.
 When using `painterResource` with menu items, declare it in the composable context:
 
 ```kotlin
-nucleusApplication {
+application {
   val advancedIcon = painterResource(Res.drawable.advanced) // ✅ Correct
   
   Tray(/* config */) {
@@ -355,7 +356,7 @@ if (!isWindowVisible) {
 }
 
 // Example 2: Fully reactive menu
-nucleusApplication {
+application {
   var darkMode by remember { mutableStateOf(false) }
   var showAdvancedOptions by remember { mutableStateOf(false) }
   var notificationsEnabled by remember { mutableStateOf(true) }

@@ -49,8 +49,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.nucleus.core.runtime)
             implementation(libs.nucleus.darkmode.detector)
-            api(libs.nucleus.application)
-            // decorated-window-tao moved to the :tray-app module (TrayApp-only); see issue #418.
+            // nucleus.application + decorated-window-tao live in :tray-app (TrayApp-only).
+            // Basic Tray is a top-level composable and does not need NucleusApplicationScope.
         }
         jvmTest.dependencies {
             implementation(kotlin("test"))
