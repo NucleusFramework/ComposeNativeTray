@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.ImageComposeScene
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.skia.Bitmap
+import org.jetbrains.skia.Data
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.FilterMipmap
 import org.jetbrains.skia.FilterMode
@@ -84,7 +85,7 @@ object ComposableIconUtils {
                 throw e
             }
 
-            val iconData =
+            val image =
                 if (iconRenderProperties.requiresScaling) {
                     scaledBitmap =
                         Bitmap().apply {
@@ -98,14 +99,12 @@ object ComposableIconUtils {
                     )
 
                     scaledImage = Image.makeFromBitmap(scaledBitmap)
-                    scaledImage.encodeToData(EncodedImageFormat.PNG)
-                        ?: throw Exception("Failed to encode scaled image to PNG")
+                    scaledImage
                 } else {
-                    renderedIcon.encodeToData(EncodedImageFormat.PNG)
-                        ?: throw Exception("Failed to encode image to PNG")
+                    renderedIcon
                 }
 
-            return iconData.bytes
+            return image.encodeToPngBytes()
         } finally {
             // Ensure proper cleanup
             try {
@@ -117,6 +116,28 @@ object ComposableIconUtils {
                 debugln { "[ComposableIconUtils] Error during cleanup: ${e.message}" }
             }
         }
+    }
+
+    /**
+     * Encodes an [Image] to PNG bytes, tolerating Skiko binary signature changes.
+     *
+     * Skiko 0.150 added a `pngCompressionLevel` parameter to [Image.encodeToData], which breaks
+     * the synthetic `$default` bridge across versions in both directions (see
+     * NucleusFramework/Nucleus#594). When the direct call fails with [NoSuchMethodError] because
+     * the runtime ships an older Skiko, fall back to the legacy two-argument overload via
+     * reflection.
+     */
+    private fun Image.encodeToPngBytes(): ByteArray {
+        val data =
+            try {
+                encodeToData(EncodedImageFormat.PNG)
+            } catch (e: NoSuchMethodError) {
+                debugln { "[ComposableIconUtils] encodeToData signature mismatch, using legacy overload: ${e.message}" }
+                Image::class.java
+                    .getMethod("encodeToData", EncodedImageFormat::class.java, Int::class.javaPrimitiveType)
+                    .invoke(this, EncodedImageFormat.PNG, 100) as Data?
+            } ?: throw Exception("Failed to encode image to PNG")
+        return data.use { it.bytes }
     }
 
     /**
