@@ -44,6 +44,10 @@ kotlin {
             api(libs.nucleus.application)
             implementation(libs.nucleus.decorated.window.tao)
         }
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.core)
+        }
     }
 }
 

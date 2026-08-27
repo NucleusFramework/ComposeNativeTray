@@ -623,18 +623,21 @@ private fun TrayAppImplPanel(
             if (!popupOnScreen) {
                 val preComputed = pendingPosition
                 pendingPosition = null
+                val workArea = TrayScreenGeometry.workAreaLogical()
+                val usable = { pos: WindowPosition -> isUsableAnchorPosition(pos, workArea) }
 
                 val position =
-                    if (preComputed != null && preComputed !is WindowPosition.PlatformDefault) {
+                    if (preComputed != null && usable(preComputed)) {
                         debugln { "[TrayApp] Using preComputed position: $preComputed" }
                         preComputed
                     } else {
-                        // Fallback: poll for position (e.g. visibleOnStart or programmatic show).
+                        // visibleOnStart / programmatic show: the tray icon may not be laid
+                        // out yet. On macOS NSStatusItem reports a left-edge rect until the
+                        // status bar assigns a slot — latching that puts the popup at (0,0).
                         debugln { "[TrayApp] No preComputed position, waiting for tray to stabilize..." }
                         val widthPx = currentWindowSize.width.value.toInt()
                         val heightPx = currentWindowSize.height.value.toInt()
 
-                        var pos: WindowPosition = WindowPosition.PlatformDefault
                         if (Platform.Current == Platform.Windows) {
                             // Windows moves tray icons around after creation, so wait for the
                             // shell to settle, refresh the cached icon rect, then re-poll.
@@ -643,18 +646,20 @@ private fun TrayAppImplPanel(
                             WindowsTrayInitializer.refreshPosition(instanceKey)
                             delay(50)
                         }
-                        // macOS positions precisely up front (status item rect), so it skips
-                        // the stabilization wait and resolves on the first poll below.
-                        val deadline = System.currentTimeMillis() + 3000
-                        while (pos is WindowPosition.PlatformDefault && System.currentTimeMillis() < deadline) {
-                            pos =
-                                getTrayWindowPositionForInstance(
-                                    instanceKey, widthPx, heightPx, horizontalOffset, verticalOffset,
-                                )
-                            debugln { "[TrayApp] Polled position: $pos" }
-                            if (pos is WindowPosition.PlatformDefault) delay(250)
-                        }
-                        if (pos is WindowPosition.PlatformDefault) {
+                        var pos =
+                            awaitAnchoredWindowPosition(isUsable = usable) {
+                                val next =
+                                    getTrayWindowPositionForInstance(
+                                        instanceKey,
+                                        widthPx,
+                                        heightPx,
+                                        horizontalOffset,
+                                        verticalOffset,
+                                    )
+                                debugln { "[TrayApp] Polled position: $next" }
+                                next
+                            }
+                        if (!usable(pos)) {
                             // Tray never became ready within the deadline — fall back
                             // to the corner heuristic rather than showing at (0,0).
                             pos = getTrayWindowPosition(widthPx, heightPx, horizontalOffset, verticalOffset)
@@ -691,7 +696,7 @@ private fun TrayAppImplPanel(
             val w = currentWindowSize.width.value.toInt()
             val h = currentWindowSize.height.value.toInt()
             val pos = getTrayWindowPositionForInstance(instanceKey, w, h, horizontalOffset, verticalOffset)
-            if (pos is WindowPosition.Absolute) popupScreenPos = pos
+            if (pos is WindowPosition.Absolute && isUsableAnchorPosition(pos)) popupScreenPos = pos
         }
     }
 
@@ -852,15 +857,29 @@ private fun NucleusApplicationScope.TrayAppImplWindow(
             if (!shouldShowWindow) {
                 val preComputed = pendingPosition
                 pendingPosition = null
+                val widthPx = currentWindowSize.width.value.toInt()
+                val heightPx = currentWindowSize.height.value.toInt()
+                val workArea = TrayScreenGeometry.workAreaLogical()
+                val usable = { pos: WindowPosition -> isUsableAnchorPosition(pos, workArea) }
                 val position =
-                    preComputed
-                        ?: getTrayWindowPositionForInstance(
-                            instanceKey,
-                            currentWindowSize.width.value.toInt(),
-                            currentWindowSize.height.value.toInt(),
-                            horizontalOffset,
-                            verticalOffset,
-                        )
+                    if (preComputed != null && usable(preComputed)) {
+                        preComputed
+                    } else {
+                        var pos =
+                            awaitAnchoredWindowPosition(isUsable = usable) {
+                                getTrayWindowPositionForInstance(
+                                    instanceKey,
+                                    widthPx,
+                                    heightPx,
+                                    horizontalOffset,
+                                    verticalOffset,
+                                )
+                            }
+                        if (!usable(pos)) {
+                            pos = getTrayWindowPosition(widthPx, heightPx, horizontalOffset, verticalOffset)
+                        }
+                        pos
+                    }
                 windowState.position = position
                 delay(30)
                 shouldShowWindow = true
