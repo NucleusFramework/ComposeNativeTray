@@ -80,16 +80,19 @@ fun getTrayWindowPosition(
     if (os == Platform.MacOS) {
         val outXY = IntArray(2)
         if (MacTrayInitializer.statusItemPosition(outXY)) {
-            val corner = getTrayPosition()
-            return calculateWindowPositionFromClick(
-                outXY[0],
-                outXY[1],
-                corner,
-                windowWidth,
-                windowHeight,
-                horizontalOffset,
-                verticalOffset,
-            )
+            val screen = TrayScreenGeometry.workAreaLogical()
+            if (isLaidOutMacStatusItem(outXY[0], outXY[1], screen)) {
+                val corner = getTrayPosition()
+                return calculateWindowPositionFromClick(
+                    outXY[0],
+                    outXY[1],
+                    corner,
+                    windowWidth,
+                    windowHeight,
+                    horizontalOffset,
+                    verticalOffset,
+                )
+            }
         }
     }
 
@@ -146,12 +149,18 @@ fun getTrayWindowPositionForInstance(
             if (MacTrayInitializer.statusItemPositionFor(instanceId, outXY)) {
                 val x = outXY[0]
                 val y = outXY[1]
+                val bounds = getScreenBoundsAt(x, y)
+                if (!isLaidOutMacStatusItem(x, y, bounds)) {
+                    debugln {
+                        "[TrayPosition] mac instance $instanceId unlaid-out ($x,$y), PlatformDefault"
+                    }
+                    return WindowPosition.PlatformDefault
+                }
                 val regionStr = MacTrayInitializer.statusItemRegionFor(instanceId)
                 val trayPos =
                     if (regionStr != null) {
                         getMacTrayPosition(regionStr)
                     } else {
-                        val bounds = getScreenBoundsAt(x, y)
                         convertPositionToCorner(x - bounds.x, y - bounds.y, bounds.width, bounds.height)
                     }
                 return calculateWindowPositionFromClick(

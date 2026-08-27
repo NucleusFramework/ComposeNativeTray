@@ -48,6 +48,16 @@ object MacTrayInitializer {
         return runCatching { MacNativeBridge.nativeGetStatusItemRegionFor(handle) }.getOrNull()
     }
 
+    /**
+     * Drains one pending AppKit event. TrayApp does this via the Compose main
+     * dispatcher; tests that query [statusItemPositionFor] off a Compose runtime
+     * must pump so the status item can lay out.
+     */
+    fun pumpEventLoop() {
+        if (!MacNativeBridge.isLoaded) return
+        runCatching { MacNativeBridge.nativeLoopTray(0) }
+    }
+
     @Synchronized
     fun initialize(
         id: String,

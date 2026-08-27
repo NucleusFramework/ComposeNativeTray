@@ -424,6 +424,42 @@ public func tray_is_menu_dark() -> Int32 {
 
 // MARK: - Status‑item geometry (exported to C)
 
+/// Laid-out status-item rect in screen coordinates, or `nil` if AppKit has not
+/// assigned the item a menu-bar slot yet. A brand-new `NSStatusItem` is parked
+/// at the menu bar's left edge (relative X ≈ 0); reporting that as precise
+/// lands the TrayApp popup at the top-left of the screen.
+private struct StatusItemGeometry {
+    let rect: NSRect
+    let screen: NSScreen
+}
+
+private func laidOutGeometry(for ctx: TrayContext) -> StatusItemGeometry? {
+    guard
+        let button = ctx.statusItem.button,
+        let window = button.window,
+        let screen = window.screen
+    else { return nil }
+
+    var rect = button.convert(button.bounds, to: nil as NSView?)
+    rect = window.convertToScreen(rect)
+    guard rect.width >= 1, rect.height >= 1 else { return nil }
+
+    // Menu extras always live on the right of the menu bar. Relative X is
+    // measured against the screen that owns the item, so a left-arranged
+    // external display (origin.x < 0) still reports a large relative X.
+    let relativeX = rect.minX - screen.frame.minX
+    guard relativeX >= 8 else { return nil }
+    return StatusItemGeometry(rect: rect, screen: screen)
+}
+
+private func writeFlippedPosition(_ geometry: StatusItemGeometry,
+                                  x: UnsafeMutablePointer<Int32>?,
+                                  y: UnsafeMutablePointer<Int32>?) {
+    x?.pointee = Int32(lround(geometry.rect.midX))
+    let primaryHeight = NSScreen.screens.first?.frame.height ?? geometry.screen.frame.height
+    y?.pointee = Int32(primaryHeight - geometry.rect.maxY)
+}
+
 // Returns 1 if the coordinate is precise, 0 if we had to use a fallback.
 @_cdecl("tray_get_status_item_position")
 public func tray_get_status_item_position(
@@ -432,31 +468,12 @@ public func tray_get_status_item_position(
 ) -> Int32
 {
     let ctx = trayInstance.flatMap { contexts[$0] } ?? contexts.values.first
-    guard
-        let button = ctx?.statusItem.button,
-        let window = button.window,
-        let screen = window.screen
-    else {
+    guard let ctx, let geometry = laidOutGeometry(for: ctx) else {
         x?.pointee = 0
         y?.pointee = 0
         return 0        // unreliable coordinates
     }
-
-    // Button frame in screen space (origin at bottom-left)
-    var rect = button.convert(button.bounds, to: nil as NSView?)
-    rect      = window.convertToScreen(rect)
-
-    // -- X ---------------------------------------------------------------
-    // Horizontal center of the icon (ideal for centered placement)
-    x?.pointee = Int32(lround(rect.midX))
-
-    // -- Y ---------------------------------------------------------------
-    // Convert macOS bottom-origin to AWT top-origin using primary screen height.
-    // This produces correct global coordinates for all screens (including external).
-    let primaryHeight = NSScreen.screens.first?.frame.height ?? screen.frame.height
-    let flippedY = Int32(primaryHeight - rect.maxY)
-    y?.pointee = flippedY
-
+    writeFlippedPosition(geometry, x: x, y: y)
     return 1            // precise coordinates
 }
 
@@ -464,16 +481,11 @@ public func tray_get_status_item_position(
 @_cdecl("tray_get_status_item_region")
 public func tray_get_status_item_region() -> UnsafeMutablePointer<CChar>? {
     let ctx = trayInstance.flatMap { contexts[$0] } ?? contexts.values.first
-    guard let button = ctx?.statusItem.button,
-          let screen = button.window?.screen else {
-        return strdup("top-right")          // default value
+    guard let ctx, let geometry = laidOutGeometry(for: ctx) else {
+        return strdup("top-right")          // default until the item is laid out
     }
-
-    let rect   = button.window!.convertToScreen(
-        button.convert(button.bounds, to: nil as NSView?)
-    )
-    let midX   = screen.frame.midX
-    let region = rect.minX < midX ? "top-left" : "top-right"
+    let midX   = geometry.screen.frame.midX
+    let region = geometry.rect.minX < midX ? "top-left" : "top-right"
     return strdup(region)                   // to be freed on JVM/JNI side
 }
 
@@ -484,29 +496,13 @@ public func tray_get_status_item_position_for(
     _ x: UnsafeMutablePointer<Int32>?,
     _ y: UnsafeMutablePointer<Int32>?
 ) -> Int32 {
-    guard let tray = tray, let ctx = contexts[tray] else {
+    guard let tray = tray, let ctx = contexts[tray],
+          let geometry = laidOutGeometry(for: ctx) else {
         x?.pointee = 0
         y?.pointee = 0
         return 0
     }
-    guard
-        let button = ctx.statusItem.button,
-        let window = button.window,
-        let screen = window.screen
-    else {
-        x?.pointee = 0
-        y?.pointee = 0
-        return 0
-    }
-
-    var rect = button.convert(button.bounds, to: nil as NSView?)
-    rect      = window.convertToScreen(rect)
-
-    x?.pointee = Int32(lround(rect.midX))
-    // Convert macOS bottom-origin to AWT top-origin using primary screen height.
-    let primaryHeight = NSScreen.screens.first?.frame.height ?? screen.frame.height
-    let flippedY = Int32(primaryHeight - rect.maxY)
-    y?.pointee = flippedY
+    writeFlippedPosition(geometry, x: x, y: y)
     return 1
 }
 
@@ -514,18 +510,12 @@ public func tray_get_status_item_position_for(
 public func tray_get_status_item_region_for(
     _ tray: UnsafeMutableRawPointer?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let tray = tray, let ctx = contexts[tray] else {
+    guard let tray = tray, let ctx = contexts[tray],
+          let geometry = laidOutGeometry(for: ctx) else {
         return strdup("top-right")
     }
-    guard let button = ctx.statusItem.button,
-          let screen = button.window?.screen else {
-        return strdup("top-right")
-    }
-    let rect   = button.window!.convertToScreen(
-        button.convert(button.bounds, to: nil as NSView?)
-    )
-    let midX   = screen.frame.midX
-    let region = rect.minX < midX ? "top-left" : "top-right"
+    let midX   = geometry.screen.frame.midX
+    let region = geometry.rect.minX < midX ? "top-left" : "top-right"
     return strdup(region)
 }
 
