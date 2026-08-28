@@ -614,12 +614,18 @@ private fun TrayAppImplPanel(
                         instanceKey, widthPx, heightPx, horizontalOffset, verticalOffset,
                     )
             }
+            // Stamp before show(): a leftover Finder mouseDown on the desktop
+            // (same gesture that opened the tray) can land in onOutsideClick
+            // before the panel is on screen. lastShownAtMs starts at 0, which
+            // would make minVisibleDurationMs a no-op and hide immediately.
+            lastShownAtMs.set(now)
             trayAppState.show()
         }
     }
 
     LaunchedEffect(isVisible) {
         if (isVisible) {
+            lastShownAtMs.set(System.currentTimeMillis())
             if (!popupOnScreen) {
                 val preComputed = pendingPosition
                 pendingPosition = null
@@ -712,11 +718,18 @@ private fun TrayAppImplPanel(
         size = currentWindowSize,
         focusable = true,
         onOutsideClick = {
-            // The monitor is process-wide: ignore clicks while already hidden.
+            // Process-wide monitor: ignore while hidden, and drop leftover
+            // Finder desktop clicks from the same gesture that opened us.
+            // Delaying those hides (minVisibleDurationMs) would flash-close.
             if (trayAppState.isVisible.value) {
-                lastDismissAtMs.set(System.currentTimeMillis())
-                debugln { "[TrayApp] outside click dismiss, dismissMode=$dismissMode" }
-                if (dismissMode == TrayWindowDismissMode.AUTO) requestHideExplicit()
+                val sinceShow = System.currentTimeMillis() - lastShownAtMs.get()
+                if (sinceShow < minVisibleDurationMs) {
+                    debugln { "[TrayApp] outside click ignored (${sinceShow}ms after show)" }
+                } else {
+                    lastDismissAtMs.set(System.currentTimeMillis())
+                    debugln { "[TrayApp] outside click dismiss, dismissMode=$dismissMode" }
+                    if (dismissMode == TrayWindowDismissMode.AUTO) requestHideExplicit()
+                }
             }
         },
         onPreviewKeyEvent = onPreviewKeyEvent,
