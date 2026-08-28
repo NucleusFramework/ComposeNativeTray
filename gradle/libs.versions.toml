@@ -5,8 +5,7 @@ kotlinx-coroutines = "1.11.0"
 compose = "1.12.0"
 detekt = "1.23.8"
 ktlint = "12.1.2"
-nucleus = "2.5.0"
-nucleus-plugin = "2.5.0"
+nucleus = "2.5.5"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
@@ -26,4 +25,4 @@ vannitktech-maven-publish = { id = "com.vanniktech.maven.publish", version = "0.
 dokka = { id = "org.jetbrains.dokka", version = "2.2.0" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
-nucleus = { id = "dev.nucleusframework", version.ref = "nucleus-plugin" }
+nucleus = { id = "dev.nucleusframework", version.ref = "nucleus" }
