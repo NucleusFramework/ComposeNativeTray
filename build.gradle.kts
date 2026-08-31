@@ -228,6 +228,10 @@ tasks.register<Exec>("publishDevToMavenLocal") {
     environment("GITHUB_REF", "refs/tags/vdev")
 
     val gradlew =
-        if (Os.isFamily(Os.FAMILY_WINDOWS)) listOf("cmd", "/c", "gradlew.bat") else listOf("./gradlew")
+        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+            listOf("cmd", "/c", rootDir.resolve("gradlew.bat").absolutePath)
+        } else {
+            listOf(rootDir.resolve("gradlew").absolutePath)
+        }
     commandLine(gradlew + listOf("publishAllToMavenLocal", "--no-configuration-cache"))
 }
