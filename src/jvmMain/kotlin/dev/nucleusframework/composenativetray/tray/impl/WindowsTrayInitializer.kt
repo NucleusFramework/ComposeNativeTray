@@ -28,16 +28,17 @@ object WindowsTrayInitializer {
         menuContent: (TrayMenuBuilder.() -> Unit)? = null,
         onMenuOpened: (() -> Unit)? = null,
     ) {
+        val existing = trayManagers[id]
+        val manager = existing ?: WindowsTrayManager(id, iconPath, tooltip, onLeftClick, onMenuOpened)
+        trayManagers[id] = manager
+
         val menuItems =
-            WindowsTrayMenuBuilderImpl(iconPath, tooltip, onLeftClick).apply {
+            WindowsTrayMenuBuilderImpl(iconPath, tooltip, onLeftClick, trayManager = manager).apply {
                 menuContent?.let { it() }
             }.build()
 
-        val manager = trayManagers[id]
-        if (manager == null) {
-            val windowsTrayManager = WindowsTrayManager(id, iconPath, tooltip, onLeftClick, onMenuOpened)
-            trayManagers[id] = windowsTrayManager
-            windowsTrayManager.initialize(menuItems)
+        if (existing == null) {
+            manager.initialize(menuItems)
         } else {
             manager.update(iconPath, tooltip, onLeftClick, onMenuOpened, menuItems)
         }

@@ -16,6 +16,7 @@ import dev.nucleusframework.composenativetray.utils.IconRenderProperties
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -148,24 +149,22 @@ internal class LinuxTrayMenuBuilderImpl(
         shortcut: KeyShortcut?,
     ) {
         lock.withLock {
-            val initialChecked = checked
+            // Live state: clicking must toggle the current value, not the one captured
+            // when the menu was built (issue #432).
+            val liveChecked = AtomicBoolean(checked)
 
             val menuItem =
                 LinuxTrayManager.MenuItem(
                     text = label,
                     isEnabled = isEnabled,
                     isCheckable = true,
-                    isChecked = initialChecked,
+                    isChecked = checked,
                     shortcut = shortcut,
                     onClick = {
-                        lock.withLock {
-                            val currentMenuItem = menuItems.find { it.text == label }
-                            val currentChecked = currentMenuItem?.isChecked ?: initialChecked
-                            val newChecked = !currentChecked
-
-                            onCheckedChange(newChecked)
-                            trayManager?.updateMenuItemCheckedState(label, newChecked)
-                        }
+                        val newChecked = !liveChecked.get()
+                        liveChecked.set(newChecked)
+                        onCheckedChange(newChecked)
+                        trayManager?.updateMenuItemCheckedState(label, newChecked)
                     },
                 )
             menuItems.add(menuItem)
@@ -185,25 +184,21 @@ internal class LinuxTrayMenuBuilderImpl(
         lock.withLock {
             val iconPath = ComposableIconUtils.renderComposableToPngFile(iconRenderProperties, iconContent)
 
-            val initialChecked = checked
+            val liveChecked = AtomicBoolean(checked)
 
             val menuItem =
                 LinuxTrayManager.MenuItem(
                     text = label,
                     isEnabled = isEnabled,
                     isCheckable = true,
-                    isChecked = initialChecked,
+                    isChecked = checked,
                     iconPath = iconPath,
                     shortcut = shortcut,
                     onClick = {
-                        lock.withLock {
-                            val currentMenuItem = menuItems.find { it.text == label }
-                            val currentChecked = currentMenuItem?.isChecked ?: initialChecked
-                            val newChecked = !currentChecked
-
-                            onCheckedChange(newChecked)
-                            trayManager?.updateMenuItemCheckedState(label, newChecked)
-                        }
+                        val newChecked = !liveChecked.get()
+                        liveChecked.set(newChecked)
+                        onCheckedChange(newChecked)
+                        trayManager?.updateMenuItemCheckedState(label, newChecked)
                     },
                 )
             menuItems.add(menuItem)
