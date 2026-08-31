@@ -32,6 +32,8 @@ import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
@@ -49,6 +51,32 @@ class NativeTray {
     private val os = Platform.Current
     private val instanceId: String = "tray-" + System.identityHashCode(this)
     private var initialized = false
+
+    private data class ComposableUpdate(
+        val iconContent: @Composable () -> Unit,
+        val iconRenderProperties: IconRenderProperties,
+        val tooltip: String,
+        val primaryAction: (() -> Unit)?,
+        val menuContent: (TrayMenuBuilder.() -> Unit)?,
+        val maxAttempts: Int,
+        val backoffMs: Long,
+        val lightIconContent: (@Composable () -> Unit)?,
+        val darkIconContent: (@Composable () -> Unit)?,
+        val onMenuOpened: (() -> Unit)?,
+    )
+
+    // Conflated so updates are applied one at a time, in submission order, and a
+    // newer update replaces any queued-but-not-yet-applied one. This prevents a
+    // stale render/menu from landing after a fresher one (issue #432).
+    private val composableUpdates = Channel<ComposableUpdate>(Channel.CONFLATED)
+
+    init {
+        trayScope.launch {
+            for (update in composableUpdates) {
+                applyComposableUpdate(update)
+            }
+        }
+    }
 
     // Expose the unique instance key so UI code (TrayApp) can compute per-instance positions
     fun instanceKey(): String = instanceId
@@ -123,14 +151,31 @@ class NativeTray {
         darkIconContent: (@Composable () -> Unit)? = null,
         onMenuOpened: (() -> Unit)? = null,
     ) {
-        trayScope.launch {
+        composableUpdates.trySend(
+            ComposableUpdate(
+                iconContent = iconContent,
+                iconRenderProperties = iconRenderProperties,
+                tooltip = tooltip,
+                primaryAction = primaryAction,
+                menuContent = menuContent,
+                maxAttempts = maxAttempts,
+                backoffMs = backoffMs,
+                lightIconContent = lightIconContent,
+                darkIconContent = darkIconContent,
+                onMenuOpened = onMenuOpened,
+            ),
+        )
+    }
+
+    private suspend fun applyComposableUpdate(update: ComposableUpdate) {
+        with(update) {
             val rendered = renderIconsWithRetry(iconContent, iconRenderProperties, maxAttempts, backoffMs)
             if (rendered == null) {
                 errorln {
                     "[NativeTray] Icon rendering failed after $maxAttempts attempts. " +
                         "Tray will not be created/updated."
                 }
-                return@launch
+                return
             }
 
             val (pngIconPath, windowsIconPath) = rendered
@@ -178,14 +223,12 @@ class NativeTray {
             }
 
             // On macOS, pre-render light/dark variants for instant appearance switching
-            if (os == MacOS && lightIconContent != null && darkIconContent != null) {
+            val light = lightIconContent
+            val dark = darkIconContent
+            if (os == MacOS && light != null && dark != null) {
                 try {
-                    val lightPath =
-                        ComposableIconUtils.renderComposableToPngFile(
-                            iconRenderProperties,
-                            lightIconContent,
-                        )
-                    val darkPath = ComposableIconUtils.renderComposableToPngFile(iconRenderProperties, darkIconContent)
+                    val lightPath = ComposableIconUtils.renderComposableToPngFile(iconRenderProperties, light)
+                    val darkPath = ComposableIconUtils.renderComposableToPngFile(iconRenderProperties, dark)
                     MacTrayInitializer.setAppearanceIcons(instanceId, lightPath, darkPath)
                 } catch (th: Throwable) {
                     errorln { "[NativeTray] Failed to render appearance icons: $th" }
@@ -244,6 +287,9 @@ class NativeTray {
     }
 
     fun dispose() {
+        // Stop the update worker and drop any pending update so a stale in-flight
+        // render cannot re-create the tray after disposal.
+        trayScope.cancel()
         when (os) {
             Linux -> LinuxTrayInitializer.dispose(instanceId)
             Windows -> WindowsTrayInitializer.dispose(instanceId)

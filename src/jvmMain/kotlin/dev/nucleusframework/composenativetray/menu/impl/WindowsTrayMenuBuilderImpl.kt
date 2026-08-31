@@ -16,6 +16,7 @@ import dev.nucleusframework.composenativetray.utils.IconRenderProperties
 import dev.nucleusframework.composenativetray.utils.isMenuBarInDarkMode
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -23,6 +24,7 @@ internal class WindowsTrayMenuBuilderImpl(
     private val iconPath: String,
     private val tooltip: String = "",
     private val onLeftClick: (() -> Unit)?,
+    private val trayManager: WindowsTrayManager? = null,
 ) : TrayMenuBuilder {
     private val menuItems = mutableListOf<WindowsTrayManager.MenuItem>()
     private val lock = ReentrantLock()
@@ -146,16 +148,22 @@ internal class WindowsTrayMenuBuilderImpl(
         shortcut: KeyShortcut?,
     ) {
         lock.withLock {
+            val text = label.withShortcut(shortcut)
+            // Live state: clicking must toggle the current value, not the one captured
+            // when the menu was built (issue #432).
+            val liveChecked = AtomicBoolean(checked)
             val menuItem =
                 WindowsTrayManager.MenuItem(
-                    text = label.withShortcut(shortcut),
+                    text = text,
                     iconPath = null,
                     isEnabled = isEnabled,
                     isCheckable = true,
                     isChecked = checked,
                     onClick = {
-                        val newChecked = !checked
+                        val newChecked = !liveChecked.get()
+                        liveChecked.set(newChecked)
                         onCheckedChange(newChecked)
+                        trayManager?.updateMenuItemCheckedState(text, newChecked)
                     },
                 )
             menuItems.add(menuItem)
@@ -175,16 +183,20 @@ internal class WindowsTrayMenuBuilderImpl(
         lock.withLock {
             val iconPath = ComposableIconUtils.renderComposableToIcoFile(iconRenderProperties, iconContent)
 
+            val text = label.withShortcut(shortcut)
+            val liveChecked = AtomicBoolean(checked)
             val menuItem =
                 WindowsTrayManager.MenuItem(
-                    text = label.withShortcut(shortcut),
+                    text = text,
                     iconPath = iconPath,
                     isEnabled = isEnabled,
                     isCheckable = true,
                     isChecked = checked,
                     onClick = {
-                        val newChecked = !checked
+                        val newChecked = !liveChecked.get()
+                        liveChecked.set(newChecked)
                         onCheckedChange(newChecked)
+                        trayManager?.updateMenuItemCheckedState(text, newChecked)
                     },
                 )
             menuItems.add(menuItem)
@@ -356,6 +368,7 @@ internal class WindowsTrayMenuBuilderImpl(
                     this.iconPath,
                     tooltip,
                     onLeftClick = onLeftClick,
+                    trayManager = trayManager,
                 ).apply(submenuContent)
             subMenuItems.addAll(subMenuImpl.menuItems)
         }

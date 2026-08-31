@@ -52,20 +52,35 @@ internal class MacTrayManager(
         }
     }
 
-    // Update a menu item's checked state
+    // Update a menu item's checked state (including items nested in submenus)
     fun updateMenuItemCheckedState(
         label: String,
         isChecked: Boolean,
     ) {
         lock.withLock {
-            val index = menuItems.indexOfFirst { it.text == label }
-            if (index != -1) {
-                menuItems[index] = menuItems[index].copy(isChecked = isChecked)
+            val patched = patchCheckedState(menuItems.toList(), label, isChecked)
+            if (patched != menuItems) {
+                menuItems.clear()
+                menuItems.addAll(patched)
                 // Recreate the menu to reflect changes
                 recreateMenu()
             }
         }
     }
+
+    private fun patchCheckedState(
+        items: List<MenuItem>,
+        label: String,
+        checked: Boolean,
+    ): List<MenuItem> =
+        items.map { item ->
+            when {
+                item.isCheckable && item.text == label -> item.copy(isChecked = checked)
+                item.subMenuItems.isNotEmpty() ->
+                    item.copy(subMenuItems = patchCheckedState(item.subMenuItems, label, checked))
+                else -> item
+            }
+        }
 
     // Update the tray with new properties and menu items
     fun update(

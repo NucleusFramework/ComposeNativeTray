@@ -16,6 +16,7 @@ import dev.nucleusframework.composenativetray.utils.IconRenderProperties
 import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -148,6 +149,9 @@ internal class MacTrayMenuBuilderImpl(
         shortcut: KeyShortcut?,
     ) {
         lock.withLock {
+            // Live state: clicking must toggle the current value, not the one captured
+            // when the menu was built (issue #432).
+            val liveChecked = AtomicBoolean(checked)
             val menuItem =
                 MacTrayManager.MenuItem(
                     text = label,
@@ -157,10 +161,10 @@ internal class MacTrayMenuBuilderImpl(
                     isChecked = checked,
                     shortcut = shortcut,
                     onClick = {
-                        lock.withLock {
-                            val newChecked = !checked
-                            onCheckedChange(newChecked)
-                        }
+                        val newChecked = !liveChecked.get()
+                        liveChecked.set(newChecked)
+                        onCheckedChange(newChecked)
+                        trayManager?.updateMenuItemCheckedState(label, newChecked)
                     },
                 )
             menuItems.add(menuItem)
@@ -180,6 +184,7 @@ internal class MacTrayMenuBuilderImpl(
         lock.withLock {
             val iconPath = ComposableIconUtils.renderComposableToPngFile(iconRenderProperties, iconContent)
 
+            val liveChecked = AtomicBoolean(checked)
             val menuItem =
                 MacTrayManager.MenuItem(
                     text = label,
@@ -189,10 +194,10 @@ internal class MacTrayMenuBuilderImpl(
                     isChecked = checked,
                     shortcut = shortcut,
                     onClick = {
-                        lock.withLock {
-                            val newChecked = !checked
-                            onCheckedChange(newChecked)
-                        }
+                        val newChecked = !liveChecked.get()
+                        liveChecked.set(newChecked)
+                        onCheckedChange(newChecked)
+                        trayManager?.updateMenuItemCheckedState(label, newChecked)
                     },
                 )
             menuItems.add(menuItem)

@@ -204,3 +204,30 @@ mavenPublishing {
         signAllPublications()
     }
 }
+
+val publishAllToMavenLocal by tasks.registering {
+    group = "publishing"
+    description = "Publishes all library modules to Maven Local."
+
+    dependsOn(tasks.named("publishToMavenLocal"))
+}
+
+gradle.projectsEvaluated {
+    publishAllToMavenLocal.configure {
+        dependsOn(subprojects.mapNotNull { it.tasks.findByName("publishToMavenLocal") })
+    }
+}
+
+tasks.register<Exec>("publishDevToMavenLocal") {
+    group = "publishing"
+    description = "Publishes all library modules to Maven Local with version 'dev'."
+
+    workingDir = rootDir
+    // The publish version is resolved from GITHUB_REF at configuration time, so
+    // re-invoke the build with it set to force version "dev" everywhere.
+    environment("GITHUB_REF", "refs/tags/vdev")
+
+    val gradlew =
+        if (Os.isFamily(Os.FAMILY_WINDOWS)) listOf("cmd", "/c", "gradlew.bat") else listOf("./gradlew")
+    commandLine(gradlew + listOf("publishAllToMavenLocal", "--no-configuration-cache"))
+}

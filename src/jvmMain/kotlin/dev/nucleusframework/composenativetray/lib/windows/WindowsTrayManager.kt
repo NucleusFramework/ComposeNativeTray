@@ -39,6 +39,10 @@ internal class WindowsTrayManager(
     private val updateQueue = mutableListOf<UpdateRequest>()
     private val updateQueueLock = Object()
 
+    // Last applied menu structure + pending checked-state patches (processed on the tray thread)
+    private var currentMenuItems: List<MenuItem> = emptyList()
+    private val checkedUpdateQueue = mutableListOf<Pair<String, Boolean>>()
+
     companion object {
         private fun log(message: String) {
             debugln { "[WindowsTrayManager] $message" }
@@ -75,6 +79,7 @@ internal class WindowsTrayManager(
             }
 
             running.set(true)
+            currentMenuItems = menuItems
 
             // Create coroutine scopes
             mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -167,6 +172,20 @@ internal class WindowsTrayManager(
         }
     }
 
+    /**
+     * Patches the checked state of a checkable item (matched by its full menu text) without
+     * requiring a full rebuild from the caller. Processed on the tray thread.
+     */
+    fun updateMenuItemCheckedState(
+        text: String,
+        isChecked: Boolean,
+    ) {
+        synchronized(updateQueueLock) {
+            checkedUpdateQueue.add(text to isChecked)
+            updateQueueLock.notify()
+        }
+    }
+
     private fun runMessageLoop() {
         log("Entering message loop on tray thread")
         var consecutiveErrors = 0
@@ -188,6 +207,7 @@ internal class WindowsTrayManager(
 
                 // Check for pending updates
                 processUpdateQueue()
+                processCheckedUpdateQueue()
 
                 // Process Windows messages with non-blocking call
                 val result = WindowsNativeBridge.nativeLoopTray(0)
@@ -295,12 +315,54 @@ internal class WindowsTrayManager(
         }
     }
 
+    private fun processCheckedUpdateQueue() {
+        val updates =
+            synchronized(updateQueueLock) {
+                if (checkedUpdateQueue.isEmpty()) return
+                val copy = checkedUpdateQueue.toList()
+                checkedUpdateQueue.clear()
+                copy
+            }
+
+        val handle = trayHandle
+        if (handle == 0L) return
+
+        currentMenuItems =
+            updates.fold(currentMenuItems) { items, (text, checked) ->
+                patchCheckedState(items, text, checked)
+            }
+
+        log("Applying ${updates.size} checked-state patch(es)")
+        freeMenuHandles()
+        setupMenu(handle, currentMenuItems)
+        try {
+            WindowsNativeBridge.nativeUpdateTray(handle)
+        } catch (e: Throwable) {
+            log("Failed to apply checked-state patch: ${e.message}")
+        }
+    }
+
+    private fun patchCheckedState(
+        items: List<MenuItem>,
+        text: String,
+        checked: Boolean,
+    ): List<MenuItem> =
+        items.map { item ->
+            when {
+                item.isCheckable && item.text == text -> item.copy(isChecked = checked)
+                item.subMenuItems.isNotEmpty() ->
+                    item.copy(subMenuItems = patchCheckedState(item.subMenuItems, text, checked))
+                else -> item
+            }
+        }
+
     private fun performUpdate(update: UpdateRequest) {
         // Update properties
         iconPath = update.iconPath
         tooltip = update.tooltip
         onLeftClick = update.onLeftClick
         onMenuOpened = update.onMenuOpened
+        currentMenuItems = update.menuItems
 
         val handle = trayHandle
         if (handle == 0L) return
