@@ -6,11 +6,21 @@ import dev.nucleusframework.core.runtime.Platform
 /**
  * Properties for rendering a Composable icon.
  *
+ * [sceneWidth]/[sceneHeight] are the master bitmap resolution. [targetWidth]/[targetHeight]
+ * are the logical (unscaled) size the native backend presents, **unless**
+ * [jvmOwnsDownscaling] is true, in which case they are physical pixels the JVM
+ * downsamples to before encoding.
+ *
  * @property sceneWidth Width of the [androidx.compose.ui.ImageComposeScene] in pixels
  * @property sceneHeight Height of the [androidx.compose.ui.ImageComposeScene] in pixels
- * @property sceneDensity Density for [androidx.compose.ui.ImageComposeScene]
- * @property targetWidth Width of the rendered icon in pixels
- * @property targetHeight Height of the rendered icon in pixels
+ * @property sceneDensity Density for [androidx.compose.ui.ImageComposeScene].
+ *   Controls how Compose `dp` maps into the scene; it is **not** the display scale factor.
+ * @property targetWidth Logical width (or physical width when [jvmOwnsDownscaling] is true)
+ * @property targetHeight Logical height (or physical height when [jvmOwnsDownscaling] is true)
+ * @property jvmOwnsDownscaling When true, the JVM scales the scene to
+ *   [targetWidth]×[targetHeight] before encoding. When false, the JVM emits the
+ *   scene-resolution master and native backends (or a multi-frame ICO) own
+ *   display-scale downsampling.
  */
 data class IconRenderProperties(
     val sceneWidth: Int = 192,
@@ -18,21 +28,24 @@ data class IconRenderProperties(
     val sceneDensity: Density = Density(2f),
     val targetWidth: Int = 192,
     val targetHeight: Int = 192,
+    val jvmOwnsDownscaling: Boolean = true,
 ) {
-    val requiresScaling = sceneWidth != targetWidth || sceneHeight != targetHeight
+    val requiresScaling =
+        jvmOwnsDownscaling && (sceneWidth != targetWidth || sceneHeight != targetHeight)
 
     companion object {
         /**
          * Provides an [IconRenderProperties] configured for the current operating system.
          *
-         * This method determines the rendering size based on the current operating system,
-         * defaulting to specific dimensions for Windows, macOS, and Linux. For unsupported operating
-         * systems, it defaults to the provided scene width and height.
+         * The scene is kept at full master resolution. [targetWidth]/[targetHeight] record the
+         * typical logical tray size per platform (Windows 32, macOS 44 / 18pt@2x, Linux 24);
+         * the JVM does **not** downsample to those sizes. Native backends pick the display
+         * scale at draw time (SNI pixmap pyramid, multi-frame ICO, AppKit point size).
          *
          * @param sceneWidth Width of the [androidx.compose.ui.ImageComposeScene] in pixels.
          * @param sceneHeight Height of the [androidx.compose.ui.ImageComposeScene] in pixels.
          * @param density Density of the [androidx.compose.ui.ImageComposeScene].
-         * @return An instance of [IconRenderProperties] with the appropriate target width and height
+         * @return An instance of [IconRenderProperties] with the appropriate logical size
          *         based on the operating system.
          */
         fun forCurrentOperatingSystem(
@@ -54,6 +67,7 @@ data class IconRenderProperties(
                 sceneDensity = density,
                 targetWidth = targetWidth,
                 targetHeight = targetHeight,
+                jvmOwnsDownscaling = false,
             )
         }
 
@@ -80,16 +94,14 @@ data class IconRenderProperties(
         /**
          * Provides an [IconRenderProperties] configured for menu items.
          *
-         * Menu items typically require smaller icons than tray icons.
-         * The default sizes are optimized for each operating system:
-         * - Windows: 16x16 pixels (standard menu icon size)
-         * - macOS: 16x16 pixels (NSMenu standard)
-         * - Linux: 16x16 pixels (GTK menu standard)
+         * Menu items are presented at 16 logical pixels/points on every platform. The scene
+         * defaults to 64px (4×) so Retina / 200% DPI menus stay sharp: the JVM keeps that
+         * master and native backends size it in points (macOS) or DPI-scaled pixels (Windows).
          *
          * @param sceneWidth Width of the [androidx.compose.ui.ImageComposeScene] in pixels. Defaults to 64.
          * @param sceneHeight Height of the [androidx.compose.ui.ImageComposeScene] in pixels. Defaults to 64.
          * @param density Density of the [androidx.compose.ui.ImageComposeScene]. Defaults to 2.0 for high-DPI support.
-         * @return An instance of [IconRenderProperties] with the appropriate target width and height for menu items.
+         * @return An instance of [IconRenderProperties] with a 16px logical size and a high-res master.
          */
         fun forMenuItem(
             sceneWidth: Int = 64,
@@ -110,6 +122,7 @@ data class IconRenderProperties(
                 sceneDensity = density,
                 targetWidth = targetWidth,
                 targetHeight = targetHeight,
+                jvmOwnsDownscaling = false,
             )
         }
     }

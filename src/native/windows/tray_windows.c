@@ -120,6 +120,7 @@ static void destroy_ctx(TrayContext *ctx);
 static HMENU tray_menu_item(struct tray_menu_item *m, UINT *id);
 static void ensure_critical_section(void);
 static HBITMAP load_icon_bitmap(const char *icon_path);
+static int small_icon_px(void);
 
 /* -------------------------------------------------------------------------- */
 /*  Critical section helper                                                   */
@@ -269,6 +270,13 @@ static HBITMAP bitmap_from_icon(HICON hIcon, int cx, int cy)
     return hbmp;
 }
 
+/* SM_CXSMICON follows system DPI (16@96dpi, 20@120dpi, 24@144dpi, 32@192dpi). */
+static int small_icon_px(void)
+{
+    int cx = GetSystemMetrics(SM_CXSMICON);
+    return cx > 0 ? cx : 16;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Generic loading of icon/bitmap from disk → ARGB bitmap           */
 /* ------------------------------------------------------------------ */
@@ -276,33 +284,35 @@ static HBITMAP load_icon_bitmap(const char *icon_path)
 {
     if (!icon_path || !*icon_path) return NULL;
 
+    int size = small_icon_px();
+
     /* Convert UTF-8 path to Wide */
     LPWSTR wpath = utf8_to_wide(icon_path);
     if (!wpath) return NULL;
 
-    /* 1st: try direct .bmp/.png as 32-bit DIB */
+    /* 1st: try direct .bmp/.png as 32-bit DIB at the DPI-scaled size */
     HBITMAP hbmp = (HBITMAP)LoadImageW(
         NULL, wpath,
         IMAGE_BITMAP,
-        16, 16,
-        LR_LOADFROMFILE | LR_CREATEDIBSECTION | LR_DEFAULTSIZE
+        size, size,
+        LR_LOADFROMFILE | LR_CREATEDIBSECTION
     );
     if (hbmp) {
         free(wpath);
         return hbmp;
     }
 
-    /* 2nd: try .ico → ARGB conversion */
+    /* 2nd: try .ico → ARGB conversion, picking the matching ICO frame */
     HICON hIcon = (HICON)LoadImageW(
         NULL, wpath,
         IMAGE_ICON,
-        16, 16,
-        LR_LOADFROMFILE | LR_DEFAULTSIZE
+        size, size,
+        LR_LOADFROMFILE
     );
     free(wpath);
 
     if (hIcon) {
-        hbmp = bitmap_from_icon(hIcon, 16, 16);
+        hbmp = bitmap_from_icon(hIcon, size, size);
         DestroyIcon(hIcon);
     }
     return hbmp;
@@ -587,12 +597,16 @@ void tray_update(struct tray *tray)
     UINT   id = ID_TRAY_FIRST;
     ctx->hmenu = tray_menu_item(tray->menu, &id);
 
-    /* Icon */
+    /* Icon: request SM_CXSMICON so a multi-frame ICO yields an exact DPI match. */
     HICON icon = NULL;
     if (tray->icon_filepath && *tray->icon_filepath) {
         LPWSTR wpath = utf8_to_wide(tray->icon_filepath);
         if (wpath) {
-            ExtractIconExW(wpath, 0, NULL, &icon, 1);
+            int size = small_icon_px();
+            icon = (HICON)LoadImageW(NULL, wpath, IMAGE_ICON, size, size, LR_LOADFROMFILE);
+            if (!icon) {
+                ExtractIconExW(wpath, 0, NULL, &icon, 1);
+            }
             free(wpath);
         }
     }
