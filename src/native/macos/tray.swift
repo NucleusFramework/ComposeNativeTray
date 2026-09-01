@@ -235,12 +235,10 @@ private func nativeMenu(from menuPtr: UnsafeMutableRawPointer, statusItem: NSSta
             item.state = checked ? .on : .off
             item.representedObject = currentPtr
 
-            // Ajouter l'icône si disponible
+            // Menu icons are 16pt; the JVM ships a ≥3x master (see forMenuItem).
             if let iconPath = iconPathPtr.flatMap({ String(cString: $0) }),
                let image = NSImage(contentsOfFile: iconPath) {
-                // Redimensionner l'icône à une taille appropriée pour le menu
-                let menuIconSize = NSSize(width: 16, height: 16)
-                image.size = menuIconSize
+                image.size = NSSize(width: 16, height: 16)
                 item.image = image
             }
 

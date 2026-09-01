@@ -78,6 +78,10 @@ jobs:
           test -f build/nativeLibs/linux-${{ matrix.arch }}/libLinuxTray.so
           ls -la build/nativeLibs/linux-${{ matrix.arch }}/
 
+      - name: IconPixmap pyramid does not upscale (issue #436)
+        working-directory: src/native/linux
+        run: bash run_pixmap_test.sh
+
       - name: Upload Linux library
         uses: actions/upload-artifact@v4
         with:

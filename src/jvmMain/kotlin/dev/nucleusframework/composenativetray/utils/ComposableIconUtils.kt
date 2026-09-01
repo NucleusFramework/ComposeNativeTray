@@ -39,7 +39,9 @@ object ComposableIconUtils {
      * Renders a Composable to a PNG image and returns the result as a byte array.
      * This function creates an [ImageComposeScene] based on the provided [IconRenderProperties],
      * renders the Composable content, and encodes the output into PNG format.
-     * If scaling is required based on the [IconRenderProperties], the rendered content is scaled before encoding.
+     * If [IconRenderProperties.requiresScaling] is true, the rendered content is scaled
+     * to [IconRenderProperties.targetWidth]/[IconRenderProperties.targetHeight] before encoding.
+     * Otherwise the scene-resolution master is encoded as-is so native backends can downsample.
      *
      * @param iconRenderProperties Properties for rendering the icon
      * @param content The Composable content to render
@@ -49,74 +51,10 @@ object ComposableIconUtils {
     fun renderComposableToPngBytes(
         iconRenderProperties: IconRenderProperties,
         content: @Composable () -> Unit,
-    ): ByteArray {
-        var scene: ImageComposeScene? = null
-        var renderedIcon: Image? = null
-        var scaledBitmap: Bitmap? = null
-        var scaledImage: Image? = null
-
-        try {
-            // Try to create and render the scene
-            try {
-                scene =
-                    ImageComposeScene(
-                        width = iconRenderProperties.sceneWidth,
-                        height = iconRenderProperties.sceneHeight,
-                        density = iconRenderProperties.sceneDensity,
-                        coroutineContext = Dispatchers.Unconfined,
-                    ) {
-                        content()
-                    }
-
-                renderedIcon = scene.render()
-            } catch (e: Exception) {
-                // Log the error but don't modify any system properties
-                val errorMessage = e.message ?: "Unknown error"
-                errorln { "[ComposableIconUtils] Failed to render scene: $errorMessage" }
-
-                // Check if it's a DirectX error on Windows
-                if (errorMessage.contains("DirectX12", ignoreCase = true) ||
-                    errorMessage.contains("Failed to choose DirectX12 adapter", ignoreCase = true)
-                ) {
-                    errorln { "[ComposableIconUtils] DirectX12 not available on this system. Scene rendering failed." }
-                }
-
-                // Re-throw the exception - let the caller handle it
-                throw e
-            }
-
-            val image =
-                if (iconRenderProperties.requiresScaling) {
-                    scaledBitmap =
-                        Bitmap().apply {
-                            allocN32Pixels(iconRenderProperties.targetWidth, iconRenderProperties.targetHeight)
-                        }
-
-                    renderedIcon.scalePixels(
-                        scaledBitmap.peekPixels()!!,
-                        FilterMipmap(FilterMode.LINEAR, MipmapMode.LINEAR),
-                        true,
-                    )
-
-                    scaledImage = Image.makeFromBitmap(scaledBitmap)
-                    scaledImage
-                } else {
-                    renderedIcon
-                }
-
-            return image.encodeToPngBytes()
-        } finally {
-            // Ensure proper cleanup
-            try {
-                scaledImage?.close()
-                scaledBitmap?.close()
-                renderedIcon?.close()
-                scene?.close()
-            } catch (e: Exception) {
-                debugln { "[ComposableIconUtils] Error during cleanup: ${e.message}" }
-            }
+    ): ByteArray =
+        withRenderedIcon(iconRenderProperties, content) { image ->
+            image.encodeToPngBytes()
         }
-    }
 
     /**
      * Encodes an [Image] to PNG bytes, tolerating Skiko binary signature changes.
@@ -160,8 +98,10 @@ object ComposableIconUtils {
 
     /**
      * Renders a Composable to ICO format bytes.
-     * Since ICO format is not directly supported by the encoding library,
-     * this method first renders to PNG and then creates a simple ICO wrapper.
+     *
+     * Encodes a multi-frame ICO (16/20/24/32/40/48/64, clipped to the master size)
+     * so the Windows shell can pick an exact match at any DPI. Frames larger than
+     * the master are omitted — never upscaled.
      *
      * @param iconRenderProperties Properties for rendering the icon
      * @param content The Composable content to render
@@ -171,53 +111,14 @@ object ComposableIconUtils {
     fun renderComposableToIcoBytes(
         iconRenderProperties: IconRenderProperties,
         content: @Composable () -> Unit,
-    ): ByteArray {
-        // First render to PNG format (which is supported)
-        val pngBytes = renderComposableToPngBytes(iconRenderProperties, content)
-
-        // Create a simple ICO format wrapper around the PNG data
-        // ICO header (6 bytes) + ICO directory entry (16 bytes) + PNG data
-        val icoHeaderSize = 6
-        val icoDirEntrySize = 16
-        val icoData = ByteArray(icoHeaderSize + icoDirEntrySize + pngBytes.size)
-
-        // ICO header
-        icoData[0] = 0 // Reserved, must be 0
-        icoData[1] = 0 // Reserved, must be 0
-        icoData[2] = 1 // Type: 1 for ICO
-        icoData[3] = 0 // Type: 1 for ICO (high byte)
-        icoData[4] = 1 // Number of images
-        icoData[5] = 0 // Number of images (high byte)
-
-        // ICO directory entry
-        icoData[6] = iconRenderProperties.targetWidth.toByte() // Width (0 means 256)
-        icoData[7] = iconRenderProperties.targetHeight.toByte() // Height (0 means 256)
-        icoData[8] = 0 // Color palette size (0 for no palette)
-        icoData[9] = 0 // Reserved, must be 0
-        icoData[10] = 1 // Color planes
-        icoData[11] = 0 // Color planes (high byte)
-        icoData[12] = 32 // Bits per pixel
-        icoData[13] = 0 // Bits per pixel (high byte)
-
-        // Size of image data in bytes
-        val dataSize = pngBytes.size
-        icoData[14] = (dataSize and 0xFF).toByte()
-        icoData[15] = ((dataSize shr 8) and 0xFF).toByte()
-        icoData[16] = ((dataSize shr 16) and 0xFF).toByte()
-        icoData[17] = ((dataSize shr 24) and 0xFF).toByte()
-
-        // Offset to image data
-        val offset = icoHeaderSize + icoDirEntrySize
-        icoData[18] = (offset and 0xFF).toByte()
-        icoData[19] = ((offset shr 8) and 0xFF).toByte()
-        icoData[20] = ((offset shr 16) and 0xFF).toByte()
-        icoData[21] = ((offset shr 24) and 0xFF).toByte()
-
-        // Copy PNG data
-        System.arraycopy(pngBytes, 0, icoData, offset, pngBytes.size)
-
-        return icoData
-    }
+    ): ByteArray =
+        withRenderedIcon(iconRenderProperties, content) { master ->
+            val frames =
+                icoFrameSizesFor(master.width, master.height).map { size ->
+                    size to master.encodeScaledPng(size, size)
+                }
+            packPngFramesAsIco(frames)
+        }
 
     /**
      * Creates a temporary file that will be deleted when the JVM exits.
@@ -258,4 +159,145 @@ object ComposableIconUtils {
             System.currentTimeMillis()
         }
     }
+
+    private fun <T> withRenderedIcon(
+        iconRenderProperties: IconRenderProperties,
+        content: @Composable () -> Unit,
+        block: (Image) -> T,
+    ): T {
+        var scene: ImageComposeScene? = null
+        var renderedIcon: Image? = null
+        var scaledBitmap: Bitmap? = null
+        var scaledImage: Image? = null
+        try {
+            try {
+                scene =
+                    ImageComposeScene(
+                        width = iconRenderProperties.sceneWidth,
+                        height = iconRenderProperties.sceneHeight,
+                        density = iconRenderProperties.sceneDensity,
+                        coroutineContext = Dispatchers.Unconfined,
+                    ) {
+                        content()
+                    }
+                renderedIcon = scene.render()
+            } catch (e: Exception) {
+                val errorMessage = e.message ?: "Unknown error"
+                errorln { "[ComposableIconUtils] Failed to render scene: $errorMessage" }
+                if (errorMessage.contains("DirectX12", ignoreCase = true) ||
+                    errorMessage.contains("Failed to choose DirectX12 adapter", ignoreCase = true)
+                ) {
+                    errorln { "[ComposableIconUtils] DirectX12 not available on this system. Scene rendering failed." }
+                }
+                throw e
+            }
+
+            val image =
+                if (iconRenderProperties.requiresScaling) {
+                    scaledBitmap =
+                        Bitmap().apply {
+                            allocN32Pixels(iconRenderProperties.targetWidth, iconRenderProperties.targetHeight)
+                        }
+                    renderedIcon.scalePixels(
+                        scaledBitmap.peekPixels()!!,
+                        FilterMipmap(FilterMode.LINEAR, MipmapMode.LINEAR),
+                        true,
+                    )
+                    scaledImage = Image.makeFromBitmap(scaledBitmap)
+                    scaledImage
+                } else {
+                    renderedIcon
+                }
+
+            return block(image)
+        } finally {
+            try {
+                scaledImage?.close()
+                scaledBitmap?.close()
+                renderedIcon?.close()
+                scene?.close()
+            } catch (e: Exception) {
+                debugln { "[ComposableIconUtils] Error during cleanup: ${e.message}" }
+            }
+        }
+    }
+
+    private fun Image.encodeScaledPng(
+        width: Int,
+        height: Int,
+    ): ByteArray {
+        if (this.width == width && this.height == height) {
+            return encodeToPngBytes()
+        }
+        var bitmap: Bitmap? = null
+        var scaled: Image? = null
+        try {
+            bitmap = Bitmap().apply { allocN32Pixels(width, height) }
+            scalePixels(
+                bitmap.peekPixels()!!,
+                FilterMipmap(FilterMode.LINEAR, MipmapMode.LINEAR),
+                true,
+            )
+            scaled = Image.makeFromBitmap(bitmap)
+            return scaled.encodeToPngBytes()
+        } finally {
+            scaled?.close()
+            bitmap?.close()
+        }
+    }
+}
+
+/** Standard Windows small-icon sizes covering 100%–400% DPI. */
+internal val WINDOWS_ICO_FRAME_SIZES = intArrayOf(16, 20, 24, 32, 40, 48, 64)
+
+/**
+ * ICO frame sizes to emit for a master of [masterWidth]×[masterHeight].
+ * Never larger than the master — the shell upscaling a missing size is better
+ * than us interpolating past the source.
+ */
+internal fun icoFrameSizesFor(
+    masterWidth: Int,
+    masterHeight: Int,
+): List<Int> {
+    val max = minOf(masterWidth, masterHeight)
+    val sizes = WINDOWS_ICO_FRAME_SIZES.filter { it <= max }
+    return sizes.ifEmpty { listOf(max.coerceIn(1, 256)) }
+}
+
+/** Packs PNG blobs into a multi-frame ICO container (Vista+ PNG-in-ICO). */
+internal fun packPngFramesAsIco(frames: List<Pair<Int, ByteArray>>): ByteArray {
+    require(frames.isNotEmpty()) { "ICO must contain at least one frame" }
+    val headerSize = 6
+    val entrySize = 16
+    val dataStart = headerSize + entrySize * frames.size
+    val total = dataStart + frames.sumOf { it.second.size }
+    val ico = ByteArray(total)
+    ico[2] = 1
+    ico[4] = frames.size.toByte()
+    ico[5] = (frames.size shr 8).toByte()
+    var offset = dataStart
+    frames.forEachIndexed { index, (size, png) ->
+        val entry = headerSize + index * entrySize
+        val dim = if (size >= 256) 0 else size
+        ico[entry] = dim.toByte()
+        ico[entry + 1] = dim.toByte()
+        ico[entry + 4] = 1
+        ico[entry + 6] = 32
+        writeIntLe(ico, entry + 8, png.size)
+        writeIntLe(ico, entry + 12, offset)
+        System.arraycopy(png, 0, ico, offset, png.size)
+        offset += png.size
+    }
+    return ico
+}
+
+private fun writeIntLe(
+    dest: ByteArray,
+    index: Int,
+    value: Int,
+) {
+    dest[index] = (value and 0xFF).toByte()
+    dest[index + 1] = ((value shr 8) and 0xFF).toByte()
+    dest[index + 2] = ((value shr 16) and 0xFF).toByte()
+    dest[index + 3] = ((value shr 24) and 0xFF).toByte()
 }

@@ -45,9 +45,7 @@
 #define MAX_MENU_ITEMS    512
 #define DCLICK_INTERVAL   500  /* ms */
 
-/* Icon target sizes for multi-resolution pixmap (matches Go implementation) */
-static const int ICON_SIZES[] = {16, 22, 24, 32, 48, 64, 128};
-#define NUM_ICON_SIZES (sizeof(ICON_SIZES) / sizeof(ICON_SIZES[0]))
+
 
 /* ========================================================================== */
 /*  Menu item                                                                 */
@@ -297,7 +295,28 @@ static void free_pixmap_list(pixmap_list *pl) {
     pl->count = 0;
 }
 
-/* Build multi-resolution pixmaps from raw PNG/JPG data. */
+static int append_pixmap(pixmap_list *pl, const uint8_t *src, int src_w, int src_h, int s) {
+    uint8_t *resized = malloc((size_t)s * s * 4);
+    if (!resized) return 0;
+
+    stbir_resize_uint8_linear(src, src_w, src_h, src_w * 4,
+                              resized, s, s, s * 4, STBIR_RGBA);
+
+    uint8_t *argb = rgba_to_argb32_be(resized, s, s);
+    free(resized);
+    if (!argb) return 0;
+
+    pl->entries[pl->count].width = s;
+    pl->entries[pl->count].height = s;
+    pl->entries[pl->count].data = argb;
+    pl->entries[pl->count].data_len = (size_t)s * s * 4;
+    pl->count++;
+    return 1;
+}
+
+/* Build multi-resolution pixmaps from raw PNG/JPG data.
+ * Never upscales past the source: a 24px JVM master used to make every
+ * 32–128 level an interpolation. The JVM now ships the scene master. */
 static pixmap_list build_pixmaps(const uint8_t *data, size_t len) {
     pixmap_list pl = {NULL, 0};
     if (!data || len == 0) return pl;
@@ -306,26 +325,22 @@ static pixmap_list build_pixmaps(const uint8_t *data, size_t len) {
     uint8_t *src = stbi_load_from_memory(data, (int)len, &src_w, &src_h, &channels, 4);
     if (!src) return pl;
 
-    pl.entries = calloc(NUM_ICON_SIZES, sizeof(pixmap));
+    int src_min = src_w < src_h ? src_w : src_h;
+    int levels = sni_pixmap_level_count_for_source(src_w, src_h);
+    if (levels <= 0) { stbi_image_free(src); return pl; }
+
+    pl.entries = calloc((size_t)levels, sizeof(pixmap));
     if (!pl.entries) { stbi_image_free(src); return pl; }
 
-    for (size_t i = 0; i < NUM_ICON_SIZES; i++) {
-        int s = ICON_SIZES[i];
-        uint8_t *resized = malloc((size_t)s * s * 4);
-        if (!resized) continue;
+    for (size_t i = 0; i < SNI_NUM_ICON_SIZES; i++) {
+        int s = SNI_ICON_SIZES[i];
+        if (s > src_min) continue;
+        if (pl.count >= levels) break;
+        append_pixmap(&pl, src, src_w, src_h, s);
+    }
 
-        stbir_resize_uint8_linear(src, src_w, src_h, src_w * 4,
-                                  resized, s, s, s * 4, STBIR_RGBA);
-
-        uint8_t *argb = rgba_to_argb32_be(resized, s, s);
-        free(resized);
-        if (!argb) continue;
-
-        pl.entries[pl.count].width = s;
-        pl.entries[pl.count].height = s;
-        pl.entries[pl.count].data = argb;
-        pl.entries[pl.count].data_len = (size_t)s * s * 4;
-        pl.count++;
+    if (pl.count == 0 && src_min > 0) {
+        append_pixmap(&pl, src, src_w, src_h, src_min);
     }
 
     stbi_image_free(src);
