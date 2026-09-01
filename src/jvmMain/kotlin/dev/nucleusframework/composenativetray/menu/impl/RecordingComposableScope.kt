@@ -1,6 +1,7 @@
 package dev.nucleusframework.composenativetray.menu.impl
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -22,7 +23,12 @@ import org.jetbrains.compose.resources.painterResource
  * functions inside the tray DSL without hoisting them above `application { … }`.
  */
 internal class RecordingComposableScope : ComposableTrayMenuScope {
-    private val ops = mutableListOf<MenuOp>()
+    // Snapshot-state backed: when only the user's menu lambda recomposes (a state it reads
+    // changed), the DSL re-records into this list. Readers of snapshot() — the Tray wrapper
+    // that computes the menu fingerprint — get invalidated by that write and re-record the
+    // whole menu with a fresh scope, so label/enabled/checked changes reach the native menu
+    // without the caller disposing the tray (issue #434).
+    private val ops = mutableStateListOf<MenuOp>()
 
     fun snapshot(): List<MenuOp> = ops.toList()
 
