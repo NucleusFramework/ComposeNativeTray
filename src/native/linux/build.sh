@@ -64,6 +64,7 @@ echo "Compiling jni_bridge.c..."
 gcc -c -o "$SCRIPT_DIR/jni_bridge.o" \
     -fPIC -O2 -Wall -Wextra -Wno-unused-parameter \
     -I "$SCRIPT_DIR" \
+    -I "$SCRIPT_DIR/../shared" \
     -I "$JNI_INCLUDE" \
     -I "$JNI_INCLUDE_LINUX" \
     "$SCRIPT_DIR/jni_bridge.c"

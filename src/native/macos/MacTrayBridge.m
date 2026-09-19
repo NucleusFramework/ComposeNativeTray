@@ -11,6 +11,7 @@
 #import <stdlib.h>
 #import <objc/runtime.h>
 #import <AppKit/AppKit.h>
+#include "jni_utf8.h"
 #include "tray.h"
 
 /* ========================================================================== */
@@ -214,13 +215,8 @@ JNIEXPORT jlong JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacN
     struct tray *t = (struct tray *)calloc(1, sizeof(struct tray));
     if (!t) return 0;
 
-    const char *iconUtf = (*env)->GetStringUTFChars(env, iconPath, NULL);
-    t->icon_filepath = strdup(iconUtf);
-    (*env)->ReleaseStringUTFChars(env, iconPath, iconUtf);
-
-    const char *tooltipUtf = (*env)->GetStringUTFChars(env, tooltip, NULL);
-    t->tooltip = strdup(tooltipUtf);
-    (*env)->ReleaseStringUTFChars(env, tooltip, tooltipUtf);
+    t->icon_filepath = jni_utf8_dup(env, iconPath);
+    t->tooltip = jni_utf8_dup(env, tooltip);
 
     t->menu = NULL;
     t->cb = NULL;
@@ -246,9 +242,7 @@ JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNa
     struct tray *t = (struct tray *)(uintptr_t)handle;
     if (!t) return;
     free((void *)t->icon_filepath);
-    const char *utf = (*env)->GetStringUTFChars(env, iconPath, NULL);
-    t->icon_filepath = strdup(utf);
-    (*env)->ReleaseStringUTFChars(env, iconPath, utf);
+    t->icon_filepath = jni_utf8_dup(env, iconPath);
 }
 
 JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetTrayTooltip(
@@ -258,9 +252,7 @@ JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNa
     struct tray *t = (struct tray *)(uintptr_t)handle;
     if (!t) return;
     free((void *)t->tooltip);
-    const char *utf = (*env)->GetStringUTFChars(env, tooltip, NULL);
-    t->tooltip = strdup(utf);
-    (*env)->ReleaseStringUTFChars(env, tooltip, utf);
+    t->tooltip = jni_utf8_dup(env, tooltip);
 }
 
 JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNativeBridge_nativeSetTrayCallback(
@@ -378,17 +370,8 @@ JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNa
     free((void *)item->text);
     free((void *)item->icon_filepath);
 
-    const char *textUtf = (*env)->GetStringUTFChars(env, text, NULL);
-    item->text = strdup(textUtf);
-    (*env)->ReleaseStringUTFChars(env, text, textUtf);
-
-    if (iconPath != NULL) {
-        const char *iconUtf = (*env)->GetStringUTFChars(env, iconPath, NULL);
-        item->icon_filepath = strdup(iconUtf);
-        (*env)->ReleaseStringUTFChars(env, iconPath, iconUtf);
-    } else {
-        item->icon_filepath = NULL;
-    }
+    item->text = jni_utf8_dup(env, text);
+    item->icon_filepath = jni_utf8_dup(env, iconPath);
 
     item->disabled = (int)disabled;
     item->checked = (int)checked;
@@ -416,13 +399,7 @@ JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNa
 
     free((void *)item->key_equivalent);
 
-    if (keyEquivalent != NULL) {
-        const char *utf = (*env)->GetStringUTFChars(env, keyEquivalent, NULL);
-        item->key_equivalent = strdup(utf);
-        (*env)->ReleaseStringUTFChars(env, keyEquivalent, utf);
-    } else {
-        item->key_equivalent = NULL;
-    }
+    item->key_equivalent = jni_utf8_dup(env, keyEquivalent);
     item->key_equivalent_mod_mask = (unsigned long)modifierMask;
 }
 
@@ -541,11 +518,11 @@ JNIEXPORT void JNICALL Java_dev_nucleusframework_composenativetray_lib_mac_MacNa
     (void)clazz;
     struct tray *t = (struct tray *)(uintptr_t)handle;
     if (!t) return;
-    const char *lightUtf = (*env)->GetStringUTFChars(env, lightIcon, NULL);
-    const char *darkUtf = (*env)->GetStringUTFChars(env, darkIcon, NULL);
+    char *lightUtf = jni_utf8_dup(env, lightIcon);
+    char *darkUtf = jni_utf8_dup(env, darkIcon);
     tray_set_icons_for_appearance(t, lightUtf, darkUtf);
-    (*env)->ReleaseStringUTFChars(env, lightIcon, lightUtf);
-    (*env)->ReleaseStringUTFChars(env, darkIcon, darkUtf);
+    free(lightUtf);
+    free(darkUtf);
 }
 
 /* ========================================================================== */

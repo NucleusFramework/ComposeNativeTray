@@ -44,6 +44,7 @@ build_arch() {
         -I "$JNI_INCLUDE" \
         -I "$JNI_INCLUDE_DARWIN" \
         -I "$SCRIPT_DIR" \
+        -I "$SCRIPT_DIR/../shared" \
         -fobjc-arc \
         "$SCRIPT_DIR/MacTrayBridge.m"
 

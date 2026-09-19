@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <dlfcn.h>
 
+#include "jni_utf8.h"
 #include "sni.h"
 
 /* ========================================================================== */
@@ -166,10 +167,7 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeCr
 {
     (void)clazz;
 
-    const char *tip = NULL;
-    if (tooltip) {
-        tip = (*env)->GetStringUTFChars(env, tooltip, NULL);
-    }
+    char *tip = jni_utf8_dup(env, tooltip);
 
     const uint8_t *icon_data = NULL;
     jsize icon_len = 0;
@@ -183,7 +181,7 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeCr
     sni_tray *tray = sni_tray_create(icon_data, (size_t)icon_len, tip);
 
     if (icon_buf) (*env)->ReleaseByteArrayElements(env, iconBytes, icon_buf, JNI_ABORT);
-    if (tip) (*env)->ReleaseStringUTFChars(env, tooltip, tip);
+    free(tip);
 
     return (jlong)(uintptr_t)tray;
 }
@@ -249,9 +247,9 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeSe
     (void)clazz;
     sni_tray *tray = (sni_tray *)(uintptr_t)handle;
     if (!tray) return;
-    const char *utf = title ? (*env)->GetStringUTFChars(env, title, NULL) : NULL;
-    sni_tray_set_title(tray, utf);
-    if (utf) (*env)->ReleaseStringUTFChars(env, title, utf);
+    char *t = jni_utf8_dup(env, title);
+    sni_tray_set_title(tray, t);
+    free(t);
 }
 
 JNIEXPORT void JNICALL
@@ -261,9 +259,9 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeSe
     (void)clazz;
     sni_tray *tray = (sni_tray *)(uintptr_t)handle;
     if (!tray) return;
-    const char *utf = tooltip ? (*env)->GetStringUTFChars(env, tooltip, NULL) : NULL;
-    sni_tray_set_tooltip(tray, utf);
-    if (utf) (*env)->ReleaseStringUTFChars(env, tooltip, utf);
+    char *tt = jni_utf8_dup(env, tooltip);
+    sni_tray_set_tooltip(tray, tt);
+    free(tt);
 }
 
 /* ── Callbacks ──────────────────────────────────────────────────────── */
@@ -358,11 +356,11 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeAd
     (void)clazz;
     sni_tray *tray = (sni_tray *)(uintptr_t)handle;
     if (!tray) return 0;
-    const char *t = title ? (*env)->GetStringUTFChars(env, title, NULL) : NULL;
-    const char *tt = tooltip ? (*env)->GetStringUTFChars(env, tooltip, NULL) : NULL;
+    char *t = jni_utf8_dup(env, title);
+    char *tt = jni_utf8_dup(env, tooltip);
     uint32_t id = sni_tray_add_menu_item(tray, t, tt);
-    if (t) (*env)->ReleaseStringUTFChars(env, title, t);
-    if (tt) (*env)->ReleaseStringUTFChars(env, tooltip, tt);
+    free(t);
+    free(tt);
     return (jint)id;
 }
 
@@ -373,11 +371,11 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeAd
     (void)clazz;
     sni_tray *tray = (sni_tray *)(uintptr_t)handle;
     if (!tray) return 0;
-    const char *t = title ? (*env)->GetStringUTFChars(env, title, NULL) : NULL;
-    const char *tt = tooltip ? (*env)->GetStringUTFChars(env, tooltip, NULL) : NULL;
+    char *t = jni_utf8_dup(env, title);
+    char *tt = jni_utf8_dup(env, tooltip);
     uint32_t id = sni_tray_add_menu_item_checkbox(tray, t, tt, checked ? 1 : 0);
-    if (t) (*env)->ReleaseStringUTFChars(env, title, t);
-    if (tt) (*env)->ReleaseStringUTFChars(env, tooltip, tt);
+    free(t);
+    free(tt);
     return (jint)id;
 }
 
@@ -398,11 +396,11 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeAd
     (void)clazz;
     sni_tray *tray = (sni_tray *)(uintptr_t)handle;
     if (!tray) return 0;
-    const char *t = title ? (*env)->GetStringUTFChars(env, title, NULL) : NULL;
-    const char *tt = tooltip ? (*env)->GetStringUTFChars(env, tooltip, NULL) : NULL;
+    char *t = jni_utf8_dup(env, title);
+    char *tt = jni_utf8_dup(env, tooltip);
     uint32_t id = sni_tray_add_sub_menu_item(tray, (uint32_t)parentId, t, tt);
-    if (t) (*env)->ReleaseStringUTFChars(env, title, t);
-    if (tt) (*env)->ReleaseStringUTFChars(env, tooltip, tt);
+    free(t);
+    free(tt);
     return (jint)id;
 }
 
@@ -414,11 +412,11 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeAd
     (void)clazz;
     sni_tray *tray = (sni_tray *)(uintptr_t)handle;
     if (!tray) return 0;
-    const char *t = title ? (*env)->GetStringUTFChars(env, title, NULL) : NULL;
-    const char *tt = tooltip ? (*env)->GetStringUTFChars(env, tooltip, NULL) : NULL;
+    char *t = jni_utf8_dup(env, title);
+    char *tt = jni_utf8_dup(env, tooltip);
     uint32_t id = sni_tray_add_sub_menu_item_checkbox(tray, (uint32_t)parentId, t, tt, checked ? 1 : 0);
-    if (t) (*env)->ReleaseStringUTFChars(env, title, t);
-    if (tt) (*env)->ReleaseStringUTFChars(env, tooltip, tt);
+    free(t);
+    free(tt);
     return (jint)id;
 }
 
@@ -440,9 +438,9 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeIt
     (void)clazz;
     sni_tray *tray = (sni_tray *)(uintptr_t)handle;
     if (!tray) return 0;
-    const char *t = title ? (*env)->GetStringUTFChars(env, title, NULL) : NULL;
+    char *t = jni_utf8_dup(env, title);
     int ok = sni_tray_item_set_title(tray, (uint32_t)id, t);
-    if (t) (*env)->ReleaseStringUTFChars(env, title, t);
+    free(t);
     return (jint)ok;
 }
 
@@ -521,11 +519,11 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeIt
     (void)clazz;
     sni_tray *tray = (sni_tray *)(uintptr_t)handle;
     if (!tray) return;
-    const char *k = key ? (*env)->GetStringUTFChars(env, key, NULL) : NULL;
+    char *k = jni_utf8_dup(env, key);
     sni_tray_item_set_shortcut(tray, (uint32_t)id, k,
                                 ctrl ? 1 : 0, shift ? 1 : 0,
                                 alt ? 1 : 0, superMod ? 1 : 0);
-    if (k) (*env)->ReleaseStringUTFChars(env, key, k);
+    free(k);
 }
 
 /* ========================================================================== */
