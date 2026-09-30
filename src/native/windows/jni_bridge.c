@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "jni_utf8.h"
 #include "tray.h"
 
 /* ========================================================================== */
@@ -145,19 +146,6 @@ static void menu_opened_cb_trampoline(struct tray *t) {
 }
 
 /* ========================================================================== */
-/*  Helper: duplicate UTF-8 string from JNI                                   */
-/* ========================================================================== */
-
-static char *jni_strdup(JNIEnv *env, jstring jstr) {
-    if (!jstr) return NULL;
-    const char *utf = (*env)->GetStringUTFChars(env, jstr, NULL);
-    if (!utf) return NULL;
-    char *copy = _strdup(utf);
-    (*env)->ReleaseStringUTFChars(env, jstr, utf);
-    return copy;
-}
-
-/* ========================================================================== */
 /*  JNI exports: Tray lifecycle                                               */
 /* ========================================================================== */
 
@@ -168,8 +156,8 @@ Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nati
     (void)clazz;
     struct tray *t = (struct tray *)calloc(1, sizeof(struct tray));
     if (!t) return 0;
-    t->icon_filepath = jni_strdup(env, iconPath);
-    t->tooltip = jni_strdup(env, tooltip);
+    t->icon_filepath = jni_utf8_dup(env, iconPath);
+    t->tooltip = jni_utf8_dup(env, tooltip);
     t->cb = NULL;
     t->menu = NULL;
     return (jlong)(uintptr_t)t;
@@ -201,7 +189,7 @@ Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nati
     struct tray *t = (struct tray *)(uintptr_t)handle;
     if (!t) return;
     free((void *)t->icon_filepath);
-    t->icon_filepath = jni_strdup(env, iconPath);
+    t->icon_filepath = jni_utf8_dup(env, iconPath);
 }
 
 JNIEXPORT void JNICALL
@@ -212,7 +200,7 @@ Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nati
     struct tray *t = (struct tray *)(uintptr_t)handle;
     if (!t) return;
     free((void *)t->tooltip);
-    t->tooltip = jni_strdup(env, tooltip);
+    t->tooltip = jni_utf8_dup(env, tooltip);
 }
 
 JNIEXPORT void JNICALL
@@ -322,8 +310,8 @@ Java_dev_nucleusframework_composenativetray_lib_windows_WindowsNativeBridge_nati
     free(item->text);
     free(item->icon_path);
 
-    item->text = jni_strdup(env, text);
-    item->icon_path = jni_strdup(env, iconPath);
+    item->text = jni_utf8_dup(env, text);
+    item->icon_path = jni_utf8_dup(env, iconPath);
     item->disabled = (int)disabled;
     item->checked = (int)checked;
     item->cb = NULL;

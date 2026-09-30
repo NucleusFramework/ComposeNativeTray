@@ -37,6 +37,9 @@ file(MAKE_DIRECTORY ${OUTPUT_DIR})
 find_package(JNI REQUIRED)
 include_directories(${JNI_INCLUDE_DIRS})
 
+# Shared helpers used by every platform bridge (jni_utf8.h)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../shared)
+
 # Add sources
 list(APPEND SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/tray_windows.c
