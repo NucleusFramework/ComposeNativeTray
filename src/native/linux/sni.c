@@ -246,9 +246,14 @@ static void flush_callbacks(sni_tray *tray) {
     for (int i = 0; i < tray->pending_count; i++) {
         pending_cb *c = &tray->pending[i];
         switch (c->type) {
-            case PCB_CLICK:
-                if (tray->on_click)  tray->on_click(c->x, c->y, tray->on_click_data);
+            case PCB_CLICK: {
+                bus_lock(tray);
+                sni_click_cb callback = tray->on_click;
+                void *userdata = tray->on_click_data;
+                bus_unlock(tray);
+                if (callback) callback(c->x, c->y, userdata);
                 break;
+            }
             case PCB_RCLICK:
                 if (tray->on_rclick) tray->on_rclick(c->x, c->y, tray->on_rclick_data);
                 break;
@@ -510,7 +515,7 @@ static int sni_get_property(sd_bus *bus, const char *path, const char *interface
     if (strcmp(property, "Menu") == 0)
         return sd_bus_message_append(reply, "o", tray->current_menu_path);
     if (strcmp(property, "ItemIsMenu") == 0)
-        return sd_bus_message_append(reply, "b", 1);
+        return sd_bus_message_append(reply, "b", tray->on_click == NULL);
     if (strcmp(property, "IconName") == 0)
         return sd_bus_message_append(reply, "s", "");
     if (strcmp(property, "IconPixmap") == 0)
@@ -1285,8 +1290,17 @@ void sni_tray_set_tooltip(sni_tray *tray, const char *tooltip) {
 
 void sni_tray_set_click_callback(sni_tray *tray, sni_click_cb cb, void *userdata) {
     if (!tray) return;
+    bus_lock(tray);
+    int changed = (tray->on_click == NULL) != (cb == NULL);
     tray->on_click = cb;
     tray->on_click_data = userdata;
+    if (changed) {
+        emit_sni_properties_changed(tray, "ItemIsMenu");
+        /* Plasma refreshes its cached ItemIsMenu via SNI signals, rather than
+         * PropertiesChanged. NewTitle triggers GetAll without rebuilding the menu. */
+        emit_new_title(tray);
+    }
+    bus_unlock(tray);
 }
 
 void sni_tray_set_rclick_callback(sni_tray *tray, sni_click_cb cb, void *userdata) {

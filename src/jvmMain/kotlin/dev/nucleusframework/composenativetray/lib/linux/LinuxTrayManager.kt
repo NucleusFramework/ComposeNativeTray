@@ -58,6 +58,22 @@ internal class LinuxTrayManager(
     // Native handle
     private var trayHandle: Long = 0L
 
+    private val clickCallback =
+        JniRunnable {
+            val action = lock.withLock { onLeftClick } ?: return@JniRunnable
+            try {
+                val xy = IntArray(2)
+                native.nativeGetLastClickXY(trayHandle, xy)
+                TrayClickTracker.recordClick(xy[0], xy[1])
+            } catch (_: Throwable) {
+            }
+            action()
+        }
+
+    private fun syncClickCallback() {
+        native.nativeSetClickCallback(trayHandle, if (onLeftClick != null) clickCallback else null)
+    }
+
     // Thread / lifecycle
     private var shutdownHook: Thread? = null
     private var loopThread: Thread? = null
@@ -110,7 +126,9 @@ internal class LinuxTrayManager(
             tooltipChanged = (tooltip != newTooltip)
             iconPath = newIconPath
             tooltip = newTooltip
+            val clickPresenceChanged = (onLeftClick == null) != (newOnLeftClick == null)
             onLeftClick = newOnLeftClick
+            if (clickPresenceChanged && trayHandle != 0L) syncClickCallback()
             onMenuOpened = newOnMenuOpened
             if (newMenuItems != null) {
                 menuItems.clear()
@@ -164,18 +182,7 @@ internal class LinuxTrayManager(
             runCatching { native.nativeSetTitle(trayHandle, tooltip) }
 
             // Set click callback
-            native.nativeSetClickCallback(
-                trayHandle,
-                JniRunnable {
-                    try {
-                        val xy = IntArray(2)
-                        native.nativeGetLastClickXY(trayHandle, xy)
-                        TrayClickTracker.recordClick(xy[0], xy[1])
-                    } catch (_: Throwable) {
-                    }
-                    onLeftClick?.invoke()
-                },
-            )
+            lock.withLock { syncClickCallback() }
 
             // Set menu-opened callback
             native.nativeSetMenuOpenedCallback(

@@ -76,3 +76,6 @@ jobs:
 
       - name: Build
         run: ./gradlew build --continue
+
+      - name: Linux primary action updates reach the tray host
+        run: dbus-run-session -- env COMPOSE_TRAY_DBUS_TEST=1 ./gradlew :jvmTest --tests '*LinuxPrimaryActionTest' --rerun-tasks

@@ -82,6 +82,10 @@ jobs:
         working-directory: src/native/linux
         run: bash run_pixmap_test.sh
 
+      - name: Primary action controls ItemIsMenu
+        working-directory: src/native/linux
+        run: bash run_primary_action_test.sh
+
       - name: JNI strings are standard UTF-8 (issue #441)
         working-directory: src/native/shared
         run: bash run_jni_utf8_test.sh

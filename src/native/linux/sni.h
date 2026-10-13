@@ -67,6 +67,8 @@ void sni_tray_set_tooltip(sni_tray *tray, const char *tooltip);
 
 /* ── Click callbacks ───────────────────────────────────────────────── */
 
+/* A non-NULL primary action sets ItemIsMenu=false; NULL restores menu-only
+ * activation. Changes are announced to the tray host while running. */
 void sni_tray_set_click_callback(sni_tray *tray, sni_click_cb cb, void *userdata);
 void sni_tray_set_rclick_callback(sni_tray *tray, sni_click_cb cb, void *userdata);
 void sni_tray_set_menu_callback(sni_tray *tray, sni_menu_item_cb cb, void *userdata);

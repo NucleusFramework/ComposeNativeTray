@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <dlfcn.h>
+#include <pthread.h>
 
 #include "jni_utf8.h"
 #include "sni.h"
@@ -53,6 +54,7 @@ typedef struct CallbackEntry {
 } CallbackEntry;
 
 static CallbackEntry *g_clickCallback = NULL;
+static pthread_mutex_t g_clickCallbackLock = PTHREAD_MUTEX_INITIALIZER;
 static CallbackEntry *g_rclickCallback = NULL;
 static CallbackEntry *g_menuCallbacks = NULL;
 static CallbackEntry *g_menuOpenedCallback = NULL;
@@ -132,8 +134,16 @@ static void invokeRunnable(jobject runnable) {
 static void click_trampoline(int32_t x, int32_t y, void *userdata) {
     (void)x; (void)y;
     uintptr_t key = (uintptr_t)userdata;
-    jobject runnable = findCallback(g_clickCallback, key);
-    if (runnable) invokeRunnable(runnable);
+    JNIEnv *env = getJNIEnv();
+    if (!env) return;
+    pthread_mutex_lock(&g_clickCallbackLock);
+    jobject globalRef = findCallback(g_clickCallback, key);
+    jobject runnable = globalRef ? (*env)->NewLocalRef(env, globalRef) : NULL;
+    pthread_mutex_unlock(&g_clickCallbackLock);
+    if (runnable) {
+        invokeRunnable(runnable);
+        (*env)->DeleteLocalRef(env, runnable);
+    }
 }
 
 static void rclick_trampoline(int32_t x, int32_t y, void *userdata) {
@@ -215,7 +225,9 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeDe
 
     /* Clean up all callbacks for this tray */
     uintptr_t key = (uintptr_t)tray;
+    pthread_mutex_lock(&g_clickCallbackLock);
     storeCallback(&g_clickCallback, key, env, NULL);
+    pthread_mutex_unlock(&g_clickCallbackLock);
     storeCallback(&g_rclickCallback, key, env, NULL);
     storeCallback(&g_menuOpenedCallback, key, env, NULL);
     /* Menu callbacks are keyed by item id, clear all */
@@ -274,7 +286,9 @@ Java_dev_nucleusframework_composenativetray_lib_linux_LinuxNativeBridge_nativeSe
     sni_tray *tray = (sni_tray *)(uintptr_t)handle;
     if (!tray) return;
     uintptr_t key = (uintptr_t)tray;
+    pthread_mutex_lock(&g_clickCallbackLock);
     storeCallback(&g_clickCallback, key, env, callback);
+    pthread_mutex_unlock(&g_clickCallbackLock);
     sni_tray_set_click_callback(tray,
                                  callback ? click_trampoline : NULL,
                                  (void *)key);
